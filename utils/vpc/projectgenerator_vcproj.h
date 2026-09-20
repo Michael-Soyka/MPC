@@ -15,13 +15,6 @@ struct PropertyState_t {
   CUtlString m_StringValue;
 };
 
-// ps3 visual studio integration
-enum PS3VSIType_e {
-  PS3_VSI_TYPE_UNDEFINED = -1,
-  PS3_VSI_TYPE_SNC = 0,
-  PS3_VSI_TYPE_GCC = 1,
-};
-
 class CProjectFile {
  public:
   CProjectFile(CVCProjGenerator *pGenerator, const char *pFilename);
@@ -190,17 +183,6 @@ class CCustomBuildTool final : public CProjectTool {
   bool m_bIsFileConfig;
 };
 
-class CXboxImageTool final : public CProjectTool {
- public:
-  CXboxImageTool(CVCProjGenerator *pGenerator) : CProjectTool(pGenerator) {}
-};
-
-class CXboxDeploymentTool final : public CProjectTool {
- public:
-  CXboxDeploymentTool(CVCProjGenerator *pGenerator)
-      : CProjectTool(pGenerator) {}
-};
-
 class CProjectConfiguration {
  public:
   CProjectConfiguration(CVCProjGenerator *pGenerator, const char *pConfigName,
@@ -219,8 +201,6 @@ class CProjectConfiguration {
   CPreLinkEventTool *GetPreLinkEventTool() { return m_pPreLinkEventTool; }
   CPostBuildEventTool *GetPostBuildEventTool() { return m_pPostBuildEventTool; }
   CCustomBuildTool *GetCustomBuildTool() { return m_pCustomBuildTool; }
-  CXboxImageTool *GetXboxImageTool() { return m_pXboxImageTool; }
-  CXboxDeploymentTool *GetXboxDeploymentTool() { return m_pXboxDeploymentTool; }
 
   bool IsEmpty();
 
@@ -248,8 +228,6 @@ class CProjectConfiguration {
   CPreLinkEventTool *m_pPreLinkEventTool;
   CPostBuildEventTool *m_pPostBuildEventTool;
   CCustomBuildTool *m_pCustomBuildTool;
-  CXboxImageTool *m_pXboxImageTool;
-  CXboxDeploymentTool *m_pXboxDeploymentTool;
 };
 
 class IVCProjWriter {
@@ -291,8 +269,6 @@ class CVCProjGenerator : public CBaseProjectDataCollector {
                                 const char *pDefinitionName,
                                 PropertyName_t *pPropertyNames);
 
-  PS3VSIType_e GetVSIType() { return m_VSIType; }
-
   CUtlString GetGUIDString() { return m_GUIDString; }
 
   bool GetRootConfiguration(const char *pConfigName,
@@ -323,8 +299,6 @@ class CVCProjGenerator : public CBaseProjectDataCollector {
 
   void SetGUID(const char *pOutputFilename);
 
-  configKeyword_e SetPS3VisualStudioIntegrationType(configKeyword_e eKeyword);
-
   void ApplyInternalPreprocessorDefinitions();
 
  private:
@@ -343,8 +317,6 @@ class CVCProjGenerator : public CBaseProjectDataCollector {
   CPreLinkEventTool *m_pPreLinkEventTool;
   CPostBuildEventTool *m_pPostBuildEventTool;
   CCustomBuildTool *m_pCustomBuildTool;
-  CXboxImageTool *m_pXboxImageTool;
-  CXboxDeploymentTool *m_pXboxDeploymentTool;
 
   CProjectConfiguration *m_pConfig;
   CProjectConfiguration *m_pFileConfig;
@@ -367,9 +339,6 @@ class CVCProjGenerator : public CBaseProjectDataCollector {
   CUtlString m_GUIDString;
 
   IVCProjWriter *m_pVCProjWriter;
-
-  // ps3 visual studio integration
-  PS3VSIType_e m_VSIType;
 };
 
 #endif  // VPC_VCPROJGENERATOR_H_

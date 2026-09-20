@@ -4,7 +4,7 @@
 #include "dependencies.h"
 #include "tier1/checksum_md5.h"
 
-#if defined(_WIN32) && !defined(_X360)
+#if defined(_WIN32)
 #include "winlite.h"
 #include <io.h>
 #endif

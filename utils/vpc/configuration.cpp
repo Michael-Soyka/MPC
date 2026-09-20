@@ -10,12 +10,8 @@ static KeywordName_t s_KeywordNameTable[] = {
     {"$General", KEYWORD_GENERAL},
     {"$Debugging", KEYWORD_DEBUGGING},
     {"$Compiler", KEYWORD_COMPILER},
-    {"$SNCCompiler", KEYWORD_PS3_SNCCOMPILER},
-    {"$GCCCompiler", KEYWORD_PS3_GCCCOMPILER},
     {"$Librarian", KEYWORD_LIBRARIAN},
     {"$Linker", KEYWORD_LINKER},
-    {"$SNCLinker", KEYWORD_PS3_SNCLINKER},
-    {"$GCCLinker", KEYWORD_PS3_GCCLINKER},
     {"$ManifestTool", KEYWORD_MANIFEST},
     {"$XMLDocumentGenerator", KEYWORD_XMLDOCGEN},
     {"$BrowseInformation", KEYWORD_BROWSEINFO},
@@ -24,8 +20,6 @@ static KeywordName_t s_KeywordNameTable[] = {
     {"$PreLinkEvent", KEYWORD_PRELINKEVENT},
     {"$PostBuildEvent", KEYWORD_POSTBUILDEVENT},
     {"$CustomBuildStep", KEYWORD_CUSTOMBUILDSTEP},
-    {"$Xbox360ImageConversion", KEYWORD_XBOXIMAGE},
-    {"$ConsoleDeployment", KEYWORD_XBOXDEPLOYMENT},
 };
 
 const char *CVPC::KeywordToName(configKeyword_e keyword) {
@@ -265,8 +259,6 @@ void VPC_Keyword_FileConfiguration() {
       configKeyword_e keyword = g_pVPC->NameToKeyword(buff);
       switch (keyword) {
         case KEYWORD_COMPILER:
-        case KEYWORD_PS3_SNCCOMPILER:
-        case KEYWORD_PS3_GCCCOMPILER:
         case KEYWORD_RESOURCES:
         case KEYWORD_CUSTOMBUILDSTEP:
           VPC_Config_Keyword(keyword, buff);
@@ -367,8 +359,6 @@ void VPC_Keyword_FolderConfiguration(folderConfig_t *pFolderConfig) {
     configKeyword_e keyword = g_pVPC->NameToKeyword(buff);
     switch (keyword) {
       case KEYWORD_COMPILER:
-      case KEYWORD_PS3_SNCCOMPILER:
-      case KEYWORD_PS3_GCCCOMPILER:
       case KEYWORD_RESOURCES:
       case KEYWORD_CUSTOMBUILDSTEP: {
         VPC_Read_Config_Keywords(buff);
@@ -411,8 +401,6 @@ void VPC_ApplyFolderConfigurationToFile(const folderConfig_t &folderConfig) {
       configKeyword_e keyword = g_pVPC->NameToKeyword(buff);
       switch (keyword) {
         case KEYWORD_COMPILER:
-        case KEYWORD_PS3_SNCCOMPILER:
-        case KEYWORD_PS3_GCCCOMPILER:
         case KEYWORD_RESOURCES:
         case KEYWORD_CUSTOMBUILDSTEP:
           VPC_Config_Keyword(keyword, buff);

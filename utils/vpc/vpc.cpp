@@ -155,10 +155,9 @@ bool CVPC::Init(int argc, const char **argv) {
   }
 
   Log_Msg(LOG_VPC, "VPC - Valve Project Creator For ");
-  Log_Msg(LOG_VPC, "Visual Studio, Xbox 360, PlayStation 3, ");
-  Log_Msg(LOG_VPC, "Xcode and Make (Build: %s %s)\n", __DATE__, __TIME__);
+  Log_Msg(LOG_VPC, "Visual Studio, Xcode and Make (Build: %s %s)\n", __DATE__, __TIME__);
   Log_Msg(LOG_VPC,
-          "(C) Copyright 1996-2024, Valve Corporation, All rights reserved.\n");
+          "(C) Copyright 1996-2026, Valve Corporation, All rights reserved.\n");
   Log_Msg(LOG_VPC, "\n");
 
   return true;
@@ -605,25 +604,22 @@ void CVPC::SpewUsage(void) {
       Log_Msg(LOG_VPC, "\n");
       Log_Msg(LOG_VPC, "  Single .vcproj generation:\n");
       Log_Msg(LOG_VPC,
-              "    vpc +client /hl2     <-- Creates a Win32 .vcproj for the "
+              "    vpc +client /hl2 <-- Creates a Win32 .vcproj for the "
               "HL2 client.\n");
-      Log_Msg(LOG_VPC,
-              "    vpc +shaderapi /x360 <-- Creates a Xbox360 .vcproj for the "
-              "shaderapi.\n");
 
       Log_Msg(LOG_VPC, "\n");
       Log_Msg(LOG_VPC,
               "  Multiple .vcproj generation - Multiple Projects for Games and "
               "Platforms:\n");
       Log_Msg(LOG_VPC,
-              "    vpc +client /hl2 /tf           <-- Creates ALL the Win32 "
+              "    vpc +client /hl2 /tf <-- Creates ALL the Win32 "
               ".vcprojs for the HL2 and TF client.\n");
       Log_Msg(LOG_VPC,
-              "    vpc +gamedlls /allgames        <-- Creates ALL the Win32 "
+              "    vpc +gamedlls /allgames <-- Creates ALL the Win32 "
               ".vcprojs for client and server for all GAMES.\n");
       Log_Msg(LOG_VPC,
-              "    vpc +tools -tier0 /win32 /x360 <-- Creates ALL the Win32 "
-              "and Xbox360 .vcprojs for the tool projects but not the tier0 "
+              "    vpc +tools -tier0 /win32 <-- Creates ALL the Win32 "
+              ".vcprojs for the tool projects but not the tier0 "
               "project.\n");
 
       Log_Msg(LOG_VPC, "\n");
@@ -1202,8 +1198,6 @@ void CVPC::ParseBuildOptions(int argc, const char *argv[]) {
   if (m_iP4Changelists.Count() > 0 && m_BuildCommands.Count() == 0) {
     m_bP4SlnCheckEverything = true;
   }
-
-  CheckForInstalledXDK();
 }
 
 //-----------------------------------------------------------------------------
@@ -1337,39 +1331,6 @@ bool CVPC::RestartFromCorrectLocation(bool *is_restart_child) {
 
   // process is running from correct location
   return false;
-#endif
-}
-
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-void CVPC::CheckForInstalledXDK() {
-#ifndef POSIX
-  if (!IsPlatformDefined("X360")) {
-    // caller not doing any 360 work, so ignore
-    return;
-  }
-
-  // quick and dirty early check for 360 XDK ability
-  // can only detect simplistic condition, VPC can't validate a perfect
-  // XDK/MSDEV installation
-  bool bHasXDK = false;
-  const char *pXDK = getenv("XEDK");
-  if (pXDK && pXDK[0]) {
-    // look for expected compiler
-    char fullPath[MAX_PATH];
-    V_strncpy(fullPath, pXDK, sizeof(fullPath));
-    V_AppendSlash(fullPath, sizeof(fullPath));
-    V_strncat(fullPath, "bin\\win32\\cl.exe", sizeof(fullPath));
-    int fileSize = Sys_FileLength(fullPath, false);
-    if (fileSize > 0) {
-      bHasXDK = true;
-    }
-  }
-  if (!bHasXDK) {
-    VPCError(
-        "Cannot Build For Xbox 360, XDK is missing or damaged. Remove /x360 "
-        "from command line.");
-  }
 #endif
 }
 
@@ -1760,9 +1721,7 @@ void CVPC::SetMacrosAndConditionals() {
   SetMacro("QUOTE", "\"", false);
 
   if (!V_stricmp(cVPCPlatform.String(), "WIN32") ||
-      !V_stricmp(cVPCPlatform.String(), "WIN64") ||
-      !V_stricmp(cVPCPlatform.String(), "X360")) {
-    // VS2010 is strictly win32/xbox360
+      !V_stricmp(cVPCPlatform.String(), "WIN64")) {
     switch (m_eVSVersion) {
       case k_EVSVersion_2026:
         m_ExtraOptionsCRCString += "VS2026";
@@ -1867,33 +1826,6 @@ void CVPC::SetMacrosAndConditionals() {
     SetMacro("_EXTERNAL_IMPLIB_EXT", ".lib", false);
     SetMacro("_EXTERNAL_STATICLIB_EXT", ".lib", false);
 
-  } else if (V_stricmp(cVPCPlatform.String(), "X360") == 0) {
-    SetMacro("PLATSUBDIR", "\\x360", false);
-
-    SetMacro("_DLL_EXT", "_360.dll", true);
-    SetMacro("_IMPLIB_EXT", "_360.lib", false);
-
-    SetMacro("_IMPLIB_PREFIX", "", false);
-
-    SetMacro("_IMPLIB_DLL_PREFIX", "", false);
-
-    SetMacro("_STATICLIB_PREFIX", "", false);
-    SetMacro("_STATICLIB_EXT", "_360.lib", false);
-
-    SetMacro("_EXE_EXT", ".exe", false);
-  } else if (V_stricmp(cVPCPlatform.String(), "PS3") == 0) {
-    SetMacro("PLATSUBDIR", "\\ps3", false);
-
-    SetMacro("_DLL_EXT", "_ps3.sprx", true);
-    SetMacro("_IMPLIB_EXT", "_ps3.lib", false);
-
-    SetMacro("_IMPLIB_PREFIX", "", false);
-    SetMacro("_IMPLIB_DLL_PREFIX", "", false);
-
-    SetMacro("_STATICLIB_PREFIX", "", false);
-    SetMacro("_STATICLIB_EXT", "_ps3.lib", false);
-
-    SetMacro("_EXE_EXT", ".self", false);
   } else if (V_stricmp(cVPCPlatform.String(), "LINUX32") == 0 ||
              V_stricmp(cVPCPlatform.String(), "LINUX64") == 0) {
     bool IsLinux32 = (V_stricmp(cVPCPlatform.String(), "LINUX32") == 0);
@@ -2060,23 +1992,6 @@ void CVPC::SetMacrosAndConditionals() {
     SetMacro("_STATICLIB_EXT", ".a", false);
 
     SetMacro("_EXE_EXT", ".exe", false);
-  }
-
-  // DO NOT INTEGRATE OR TAKE THIS - THIS IS TEMP PORTING GLUE.
-  {
-    // CERT has been decided to be a platform permutation of RETAIL.
-    // The DOTA S1 scripts are not in a clean enough condition to place this
-    // logic there. The S2 scripts have it there along with similar common
-    // concepts.
-    conditional_t *pRetailConditional =
-        FindOrCreateConditional("RETAIL", false, CONDITIONAL_CUSTOM);
-    if (pRetailConditional && pRetailConditional->m_bDefined &&
-        (!V_stricmp(cVPCPlatform.String(), "X360") ||
-         !V_stricmp(cVPCPlatform.String(), "PS3"))) {
-      // CERT is a restricted console RETAIL concept, with publisher dictated
-      // rules, there is no CERT process for non-console platforms.
-      SetConditional("CERT");
-    }
   }
 
   // Set VPCGAME macro based on target game
@@ -2246,9 +2161,6 @@ void CVPC::SetupGenerators() {
   extern IBaseSolutionGenerator *GetSolutionGenerator_Win32();
   extern IBaseProjectGenerator *GetWin32ProjectGenerator();
   extern IBaseProjectGenerator *GetWin32ProjectGenerator_2010();
-  extern IBaseProjectGenerator *GetPS3ProjectGenerator();
-  extern IBaseProjectGenerator *GetXbox360ProjectGenerator();
-  extern IBaseProjectGenerator *GetXbox360ProjectGenerator_2010();
   extern IBaseProjectGenerator *GetMakefileProjectGenerator();
   extern IBaseSolutionGenerator *GetMakefileSolutionGenerator();
   extern IBaseProjectGenerator *GetXcodeProjectGenerator();
@@ -2280,44 +2192,30 @@ void CVPC::SetupGenerators() {
     m_pSolutionGenerator = GetXcodeSolutionGenerator();
     m_bForceIterate = true;
   } else {
-    if (IsPlatformDefined("PS3")) {
-      m_pProjectGenerator = GetPS3ProjectGenerator();
-      m_pSolutionGenerator = GetSolutionGenerator_Win32();
-    } else if (IsPlatformDefined("X360")) {
-      if (m_bUseVS2010FileFormat) {
-        Log_Msg(LOG_VPC, Color(0, 255, 255, 255),
-                "Generating for Visual Studio 2010.\n");
-        m_pProjectGenerator = GetXbox360ProjectGenerator_2010();
-      } else {
-        m_pProjectGenerator = GetXbox360ProjectGenerator();
-      }
-      m_pSolutionGenerator = GetSolutionGenerator_Win32();
-    } else {
-      // spew what we are generating
-      const char *pchLogLine = "Generating for Visual Studio 2005.\n";
-      if (m_eVSVersion == k_EVSVersion_2026)
-        pchLogLine = "Generating for Visual Studio 2026.\n";
-      else if (m_eVSVersion == k_EVSVersion_2022)
-        pchLogLine = "Generating for Visual Studio 2022.\n";
-      else if (m_eVSVersion == k_EVSVersion_2015)
-        pchLogLine = "Generating for Visual Studio 2015.\n";
-      else if (m_eVSVersion == k_EVSVersion_2013)
-        pchLogLine = "Generating for Visual Studio 2013.\n";
-      else if (m_eVSVersion == k_EVSVersion_2012)
-        pchLogLine = "Generating for Visual Studio 2012.\n";
-      else if (m_eVSVersion == k_EVSVersion_2010)
-        pchLogLine = "Generating for Visual Studio 2010.\n";
+    // spew what we are generating
+    const char *pchLogLine = "Generating for Visual Studio 2005.\n";
+    if (m_eVSVersion == k_EVSVersion_2026)
+      pchLogLine = "Generating for Visual Studio 2026.\n";
+    else if (m_eVSVersion == k_EVSVersion_2022)
+      pchLogLine = "Generating for Visual Studio 2022.\n";
+    else if (m_eVSVersion == k_EVSVersion_2015)
+      pchLogLine = "Generating for Visual Studio 2015.\n";
+    else if (m_eVSVersion == k_EVSVersion_2013)
+      pchLogLine = "Generating for Visual Studio 2013.\n";
+    else if (m_eVSVersion == k_EVSVersion_2012)
+      pchLogLine = "Generating for Visual Studio 2012.\n";
+    else if (m_eVSVersion == k_EVSVersion_2010)
+      pchLogLine = "Generating for Visual Studio 2010.\n";
 
-      Log_Msg(LOG_VPC, Color(0, 255, 255, 255), pchLogLine);
+    Log_Msg(LOG_VPC, Color(0, 255, 255, 255), pchLogLine);
 
-      // pick a project generator
-      if (m_bUseVS2010FileFormat)
-        m_pProjectGenerator = GetWin32ProjectGenerator_2010();
-      else
-        m_pProjectGenerator = GetWin32ProjectGenerator();
+    // pick a project generator
+    if (m_bUseVS2010FileFormat)
+      m_pProjectGenerator = GetWin32ProjectGenerator_2010();
+    else
+      m_pProjectGenerator = GetWin32ProjectGenerator();
 
-      m_pSolutionGenerator = GetSolutionGenerator_Win32();
-    }
+    m_pSolutionGenerator = GetSolutionGenerator_Win32();
   }
 #else
   if (bIsLinux) {

@@ -716,7 +716,7 @@ bool CProjectDependencyGraph::VisitProject(projectIndex_t iProject,
 
   // The string that we replace $(TargetName) with is the output project
   // filename without the path or extension. That'll be something like
-  // "tier0_360".
+  // "tier0".
   char sTargetNameReplacement[MAX_PATH];
   V_FileBase(pLinkerOutputFile, sTargetNameReplacement,
              sizeof(sTargetNameReplacement));

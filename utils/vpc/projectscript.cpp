@@ -126,13 +126,11 @@ const char *g_szArrPlatforms[] = {"win32",    //  0
                                   "linux32",  //  4
                                   "linux64",  //  5
                                   "cygwin",   //  6
-                                  "ps3",      //  7
-                                  "x360",     //  8
-                                  "win",      //  9
-                                  "osx",      // 10
-                                  "linux",    // 11
-                                  "posix",    // 12
-                                  "any",      // 13
+                                  "win",      //  7
+                                  "osx",      //  8
+                                  "linux",    //  9
+                                  "posix",    // 10
+                                  "any",      // 11
                                   NULL};
 
 //-----------------------------------------------------------------------------
@@ -144,14 +142,14 @@ const char *g_szArrPlatforms[] = {"win32",    //  0
 //-----------------------------------------------------------------------------
 static char *ResolveFilename(const char *pszFile,
                              CUtlVector<CUtlString> &vecBonusFiles) {
-  static const int k_lastRealPlatform = 8;  // index, not count
-  static const int k_AnyPlatform = 13;      // index
+  static const int k_lastRealPlatform = 6;  // index, not count
+  static const int k_AnyPlatform = 11;      // index
 
-  static const int arrPlatformChains[][9] = {
-      {0, 1, 2, 3, 4, 5, 6, 7, 8},           // the raw platforms
-      {9, 9, 10, 10, 11, 11, 12, 12, 9},     // first fallback
-      {13, 13, 12, 12, 12, 12, 13, 13, 13},  // 2nd fallback
-      {13, 13, 13, 13, 13, 13, 13, 13, 13},  // 3rd fallback
+  static const int arrPlatformChains[][7] = {
+      {0, 1, 2, 3, 4, 5, 6},                 // the raw platforms
+      {7, 7, 8, 8, 9, 9, 10},                // first fallback
+      {11, 11, 10, 10, 10, 10, 11},          // 2nd fallback
+      {11, 11, 11, 11, 11, 11, 11},          // 3rd fallback
   };
 
   // Don't want the actual backing store to be const since we aren't

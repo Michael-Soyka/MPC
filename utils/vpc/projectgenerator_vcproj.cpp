@@ -162,13 +162,6 @@ void CProjectFolder::AddFile(const char *pFilename, CProjectFile **ppFile) {
   unsigned short iIndex;
   for (iIndex = m_Files.Head(); iIndex != m_Files.InvalidIndex();
        iIndex = m_Files.Next(iIndex)) {
-    if (g_pVPC->IsPlatformDefined("PS3")) {
-      // temporary legacy behavior for diff ease until I can be sure project
-      // generation is equivalent
-      iIndex = m_Files.InvalidIndex();
-      break;
-    }
-
     // the COM layer for WIN32 sorted by filename only, and NOT the entire path
     if (V_stricmp(V_GetFileName(pFilename),
                   V_GetFileName(m_Files[iIndex]->m_Name.Get())) < 0) {
@@ -632,8 +625,6 @@ CProjectConfiguration::CProjectConfiguration(CVCProjGenerator *pGenerator,
   m_pPreLinkEventTool = NULL;
   m_pPostBuildEventTool = NULL;
   m_pCustomBuildTool = NULL;
-  m_pXboxImageTool = NULL;
-  m_pXboxDeploymentTool = NULL;
 
   if (!m_bIsFileConfig) {
     m_pDebuggingTool = new CDebuggingTool(pGenerator);
@@ -648,8 +639,6 @@ CProjectConfiguration::CProjectConfiguration(CVCProjGenerator *pGenerator,
     m_pPreLinkEventTool = new CPreLinkEventTool(pGenerator);
     m_pPostBuildEventTool = new CPostBuildEventTool(pGenerator);
     m_pCustomBuildTool = new CCustomBuildTool(pGenerator, pConfigName, false);
-    m_pXboxImageTool = new CXboxImageTool(pGenerator);
-    m_pXboxDeploymentTool = new CXboxDeploymentTool(pGenerator);
   } else {
     // a file's config can only be the compiler or the custom build tool
     const char *pExtension = V_GetFileExtension(pFilename);
@@ -678,8 +667,6 @@ CProjectConfiguration::~CProjectConfiguration() {
   delete m_pPreLinkEventTool;
   delete m_pPostBuildEventTool;
   delete m_pCustomBuildTool;
-  delete m_pXboxImageTool;
-  delete m_pXboxDeploymentTool;
 }
 
 bool CProjectConfiguration::IsEmpty() {
@@ -730,14 +717,6 @@ bool CProjectConfiguration::IsEmpty() {
       m_pCustomBuildTool->m_PropertyStates.m_Properties.Count())
     return false;
 
-  if (m_pXboxImageTool &&
-      m_pXboxImageTool->m_PropertyStates.m_Properties.Count())
-    return false;
-
-  if (m_pXboxDeploymentTool &&
-      m_pXboxDeploymentTool->m_PropertyStates.m_Properties.Count())
-    return false;
-
   return true;
 }
 
@@ -764,12 +743,6 @@ bool CProjectConfiguration::SetProperty(ToolProperty_t *pToolProperty) {
 
       delete m_pLinkerTool;
       m_pLinkerTool = NULL;
-
-      delete m_pXboxImageTool;
-      m_pXboxImageTool = NULL;
-
-      delete m_pXboxDeploymentTool;
-      m_pXboxDeploymentTool = NULL;
     } else {
       // exe/dlls do not get the librarian
       delete m_pLibrarianTool;
@@ -852,15 +825,10 @@ void CVCProjGenerator::Clear() {
   m_pPreLinkEventTool = NULL;
   m_pPostBuildEventTool = NULL;
   m_pCustomBuildTool = NULL;
-  m_pXboxImageTool = NULL;
-  m_pXboxDeploymentTool = NULL;
 
   m_spFolderStack.Purge();
   m_spCompilerStack.Purge();
   m_spCustomBuildToolStack.Purge();
-
-  // undefined until set
-  m_VSIType = PS3_VSI_TYPE_UNDEFINED;
 
   m_FileDictionary.Purge();
 
@@ -1178,14 +1146,6 @@ bool CVCProjGenerator::StartPropertySection(configKeyword_e eKeyword,
       break;
 
     case KEYWORD_COMPILER:
-    case KEYWORD_PS3_SNCCOMPILER:
-    case KEYWORD_PS3_GCCCOMPILER:
-      eKeyword = SetPS3VisualStudioIntegrationType(eKeyword);
-      if (eKeyword == KEYWORD_UNKNOWN) {
-        // skip this section
-        break;
-      }
-
       m_spCompilerStack.Push(m_pCompilerTool);
       if (m_pFileConfig) {
         m_pCompilerTool = m_pFileConfig->GetCompilerTool();
@@ -1209,14 +1169,6 @@ bool CVCProjGenerator::StartPropertySection(configKeyword_e eKeyword,
       break;
 
     case KEYWORD_LINKER:
-    case KEYWORD_PS3_SNCLINKER:
-    case KEYWORD_PS3_GCCLINKER:
-      eKeyword = SetPS3VisualStudioIntegrationType(eKeyword);
-      if (eKeyword == KEYWORD_UNKNOWN) {
-        // skip this section
-        break;
-      }
-
       m_pLinkerTool = m_pConfig->GetLinkerTool();
       if (!m_pLinkerTool) {
         g_pVPC->VPCError("Could not get %s tool interface from configuration",
@@ -1256,11 +1208,6 @@ bool CVCProjGenerator::StartPropertySection(configKeyword_e eKeyword,
       break;
 
     case KEYWORD_BROWSEINFO:
-      if (g_pVPC->IsPlatformDefined("PS3")) {
-        // not for ps3
-        break;
-      }
-
       m_pBrowseInfoTool = m_pConfig->GetBrowseInfoTool();
       if (!m_pBrowseInfoTool) {
         g_pVPC->VPCError("Could not get %s tool interface from configuration",
@@ -1325,34 +1272,6 @@ bool CVCProjGenerator::StartPropertySection(configKeyword_e eKeyword,
       bHandled = true;
       break;
 
-    case KEYWORD_XBOXIMAGE:
-      if (!g_pVPC->IsPlatformDefined("X360")) {
-        // xbox generator specific
-        break;
-      }
-
-      m_pXboxImageTool = m_pConfig->GetXboxImageTool();
-      if (!m_pXboxImageTool) {
-        g_pVPC->VPCError("Could not get %s tool interface from configuration",
-                         g_pVPC->KeywordToName(eKeyword));
-      }
-      bHandled = true;
-      break;
-
-    case KEYWORD_XBOXDEPLOYMENT:
-      if (!g_pVPC->IsPlatformDefined("X360")) {
-        // xbox generator specific
-        break;
-      }
-
-      m_pXboxDeploymentTool = m_pConfig->GetXboxDeploymentTool();
-      if (!m_pXboxDeploymentTool) {
-        g_pVPC->VPCError("Could not get %s tool interface from configuration",
-                         g_pVPC->KeywordToName(eKeyword));
-      }
-      bHandled = true;
-      break;
-
     default:
       // unknown
       return false;
@@ -1378,9 +1297,6 @@ void CVCProjGenerator::EndPropertySection(configKeyword_e eKeyword) {
       break;
 
     case KEYWORD_COMPILER:
-    case KEYWORD_PS3_SNCCOMPILER:
-    case KEYWORD_PS3_GCCCOMPILER:
-      eKeyword = SetPS3VisualStudioIntegrationType(eKeyword);
       m_spCompilerStack.Pop(m_pCompilerTool);
       break;
 
@@ -1432,8 +1348,6 @@ void CVCProjGenerator::HandleProperty(const char *pPropertyName,
       break;
 
     case KEYWORD_COMPILER:
-    case KEYWORD_PS3_SNCCOMPILER:
-    case KEYWORD_PS3_GCCCOMPILER:
       pTool = m_pCompilerTool;
       break;
 
@@ -1442,8 +1356,6 @@ void CVCProjGenerator::HandleProperty(const char *pPropertyName,
       break;
 
     case KEYWORD_LINKER:
-    case KEYWORD_PS3_SNCLINKER:
-    case KEYWORD_PS3_GCCLINKER:
       pTool = m_pLinkerTool;
       break;
 
@@ -1477,14 +1389,6 @@ void CVCProjGenerator::HandleProperty(const char *pPropertyName,
 
     case KEYWORD_CUSTOMBUILDSTEP:
       pTool = m_pCustomBuildTool;
-      break;
-
-    case KEYWORD_XBOXIMAGE:
-      pTool = m_pXboxImageTool;
-      break;
-
-    case KEYWORD_XBOXDEPLOYMENT:
-      pTool = m_pXboxDeploymentTool;
       break;
 
     default:
@@ -1638,72 +1542,6 @@ bool CVCProjGenerator::GetRootConfiguration(const char *pConfigName,
 
 bool CVCProjGenerator::IsConfigurationNameValid(const char *pConfigName) {
   return GetRootConfiguration(pConfigName, NULL);
-}
-
-configKeyword_e CVCProjGenerator::SetPS3VisualStudioIntegrationType(
-    configKeyword_e eKeyword) {
-  PS3VSIType_e vsiType = PS3_VSI_TYPE_UNDEFINED;
-
-  switch (eKeyword) {
-    case KEYWORD_COMPILER:
-    case KEYWORD_LINKER:
-      if (!g_pVPC->IsPlatformDefined("PS3")) {
-        return eKeyword;
-      }
-
-      if (m_VSIType == PS3_VSI_TYPE_UNDEFINED) {
-        // PS3 defaults to SNC, unless explictly specified
-        vsiType = PS3_VSI_TYPE_SNC;
-      } else {
-        // already set
-        vsiType = m_VSIType;
-      }
-      break;
-
-    case KEYWORD_PS3_SNCCOMPILER:
-    case KEYWORD_PS3_SNCLINKER:
-      if (!g_pVPC->IsPlatformDefined("PS3")) {
-        // ps3 generator specific
-        // not available for other platforms
-        return KEYWORD_UNKNOWN;
-      }
-      vsiType = PS3_VSI_TYPE_SNC;
-      break;
-
-    case KEYWORD_PS3_GCCCOMPILER:
-    case KEYWORD_PS3_GCCLINKER:
-      if (!g_pVPC->IsPlatformDefined("PS3")) {
-        // ps3 generator specific
-        // not available for other platforms
-        return KEYWORD_UNKNOWN;
-      }
-      vsiType = PS3_VSI_TYPE_GCC;
-      break;
-
-    default:
-      g_pVPC->VPCError("Unknown PS3 compiler/linker type");
-      break;
-  }
-
-  if (m_VSIType == PS3_VSI_TYPE_UNDEFINED) {
-    // once set, compiler/linker choice (snc or gcc) cannot be changed
-    m_VSIType = vsiType;
-  } else if (m_VSIType != vsiType) {
-    // cannot intermix tool properties, they must be exclusive
-    g_pVPC->VPCSyntaxError(
-        "PS3 compiler/linker (GCC or SNC) already set, cannot be changed");
-  }
-
-  // remap ambiguous compiler/linker tool to explicit SNC/GCC tool flavor
-  if (eKeyword == KEYWORD_COMPILER) {
-    eKeyword = (m_VSIType == PS3_VSI_TYPE_SNC) ? KEYWORD_PS3_SNCCOMPILER
-                                               : KEYWORD_PS3_GCCCOMPILER;
-  } else if (eKeyword == KEYWORD_LINKER) {
-    eKeyword = (m_VSIType == PS3_VSI_TYPE_SNC) ? KEYWORD_PS3_SNCLINKER
-                                               : KEYWORD_PS3_GCCLINKER;
-  }
-
-  return eKeyword;
 }
 
 void CVCProjGenerator::ApplyInternalPreprocessorDefinitions() {

@@ -1,4 +1,4 @@
-# Valve Project Creator is a tool to generate build systems for Visual Studio, Xbox 360, PlayStation 3, Xcode and Make.
+# Valve Project Creator is a tool to generate build systems for Visual Studio, Xcode and Make.
 #
 # See https://developer.valvesoftware.com/wiki/Valve_Project_Creator
 
@@ -404,7 +404,6 @@ target_sources(${PACKAGE_NAME}
     utils/vpc/p4sln.cpp
     utils/vpc/projectgenerator_codelite.cpp
     utils/vpc/projectgenerator_makefile.cpp
-    utils/vpc/projectgenerator_ps3.cpp
     utils/vpc/projectgenerator_vcproj.cpp
     utils/vpc/projectscript.cpp
     utils/vpc/scriptsource.cpp
@@ -536,7 +535,6 @@ target_sources(${PACKAGE_NAME}
     utils/vpc/p4sln.h
     utils/vpc/product_version_config.h
     utils/vpc/projectgenerator_codelite.h
-    utils/vpc/projectgenerator_ps3.h
     utils/vpc/projectgenerator_vcproj.h
     utils/vpc/scriptsource.h
     utils/vpc/sys_utils.h
@@ -552,13 +550,9 @@ if (SE_VPC_OS_WIN)
 
       utils/vpc/projectgenerator_win32.cpp
       utils/vpc/projectgenerator_win32_2010.cpp
-      utils/vpc/projectgenerator_xbox360.cpp
-      utils/vpc/projectgenerator_xbox360_2010.cpp
       utils/vpc/solutiongenerator_win32.cpp
       utils/vpc/projectgenerator_win32.h
       utils/vpc/projectgenerator_win32_2010.h
-      utils/vpc/projectgenerator_xbox360.h
-      utils/vpc/projectgenerator_xbox360_2010.h
   )
 endif (SE_VPC_OS_WIN)
 
