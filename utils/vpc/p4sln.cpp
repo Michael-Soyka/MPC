@@ -196,7 +196,7 @@ public:
 
 void GenerateSolutionForPerforceChangelist( CProjectDependencyGraph &dependencyGraph, CUtlVector<int> &changelists, IBaseSolutionGenerator *pGenerator, const char *pSolutionFilename )
 {
-	// We want to check against ALL projects in projects.vgc.
+	// We want to check against ALL projects in projects.mgc.
 	int nDepFlags = BUILDPROJDEPS_FULL_DEPENDENCY_SET | BUILDPROJDEPS_CHECK_ALL_PROJECTS;
 	dependencyGraph.BuildProjectDependencies( nDepFlags );
 

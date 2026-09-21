@@ -2309,7 +2309,7 @@ const char *CVPC::BuildTempGroupScript(const char *pVPCScriptName) {
   V_GetCurrentDirectory(szCurrentDirectory, sizeof(szCurrentDirectory));
 
   // caller is specifying an explicit VPC, i.e. not a project from the default
-  // group create a temporary group file that mimics a VGC, that points to the
+  // group create a temporary group file that mimics a MGC, that points to the
   // current dir's VPC
 
   // Generate a really crappy temp filename
@@ -2319,7 +2319,7 @@ const char *CVPC::BuildTempGroupScript(const char *pVPCScriptName) {
 
   char tempGroupScriptFilename[MAX_PATH];
   V_ComposeFileName(szCurrentDirectory,
-                    CFmtStr("%08x%08llxvgc.tmp", tmpHash, (long long)tmpTime),
+                    CFmtStr("%08x%08llxmgc.tmp", tmpHash, (long long)tmpTime),
                     tempGroupScriptFilename, sizeof(tempGroupScriptFilename));
   m_TempGroupScriptFilename = tempGroupScriptFilename;
 
@@ -2370,7 +2370,7 @@ int CVPC::ProcessCommandLine() {
 
   // possible extensions determine operation mode beyond expected normal user
   // case
-  bool is_vgc = false, is_vpc = false, is_vcproj = false;
+  bool is_mgc = false, is_vpc = false, is_vcproj = false;
   bool has_build_command = false;
 
   const char *script_name = nullptr, *script_name_vcproj = nullptr;
@@ -2378,10 +2378,10 @@ int CVPC::ProcessCommandLine() {
 
   for (int i = 1; i < m_nArgc; i++) {
     const char *argv = m_ppArgv[i];
-    if (V_stristr(argv, ".vgc")) {
+    if (V_stristr(argv, ".mgc")) {
       // caller explicitly providing group
       script_name = argv;
-      is_vgc = true;
+      is_mgc = true;
       has_build_command = true;
       break;
     }
@@ -2418,14 +2418,14 @@ int CVPC::ProcessCommandLine() {
     script_name = BuildTempGroupScript(script_name);
 
     is_vpc = false;
-    is_vgc = true;
+    is_mgc = true;
   }
 
-  if (!is_vgc) {
+  if (!is_mgc) {
     // no script, use default group
-    default_script = CFmtStr( "%s\\default.vgc", GetScriptsDirName() ).Get();
+    default_script = CFmtStr( "%s\\default.mgc", GetScriptsDirName() ).Get();
     script_name    = default_script.Get();
-    is_vgc         = true;
+    is_mgc         = true;
   }
 
   // set the current directory, it is to be expected src, i.e. .\mpc_scripts\..
