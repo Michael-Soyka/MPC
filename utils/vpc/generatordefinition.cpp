@@ -115,6 +115,14 @@ void CGeneratorDefinition::IterateAttributesKey( ToolProperty_t *pProperty, KeyV
 			pProperty->m_Ordinals[iIndex].m_ValueString = pOrdinalValue;
 		}
 	}
+	else if ( !V_stricmp( pAttributeName, "IgnoreForOutput" ) )
+	{
+		pProperty->m_bIgnoreForOutput = pAttributesKV->GetBool();
+	}
+	else if ( !V_stricmp( pAttributeName, "GeneratedOnOutput" ) )
+	{
+		pProperty->m_bGeneratedOnOutput = pAttributesKV->GetBool();
+	}
 	else
 	{
 		g_pVPC->VPCError( "Unknown attribute '%s' in '%s'", pAttributeName, pProperty->m_ParseString.Get() );

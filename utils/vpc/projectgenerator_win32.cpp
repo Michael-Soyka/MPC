@@ -577,6 +577,8 @@ bool CProjectGenerator_Win32::WriteProperty(
     return true;
   }
 
+  if (pPropertyState->m_pToolProperty->m_bIgnoreForOutput) return true;
+
   if (!pOutputName) {
     pOutputName = pPropertyState->m_pToolProperty->m_OutputString.Get();
     if (!pOutputName[0]) {
@@ -599,9 +601,17 @@ bool CProjectGenerator_Win32::WriteProperty(
     pCondition = conditionString.Get();
   }
 
+  const char *pValueStr = pPropertyState->m_StringValue.Get();
+  CUtlString generatedValue;
+  if (pPropertyState->m_pToolProperty->m_bGeneratedOnOutput &&
+      GenerateToolProperty(pOutputName, pValueStr, generatedValue,
+                           bEmitConfiguration ? pConfigName : nullptr)) {
+    pValueStr = generatedValue.Get();
+  }
+
   switch (pPropertyState->m_pToolProperty->m_nType) {
     case PT_BOOLEAN: {
-      bool bEnabled = Sys_StringToBool(pPropertyState->m_StringValue.Get());
+      bool bEnabled = Sys_StringToBool(pValueStr);
       if (pPropertyState->m_pToolProperty->m_bInvertOutput) {
         bEnabled ^= 1;
       }
@@ -610,15 +620,13 @@ bool CProjectGenerator_Win32::WriteProperty(
     } break;
 
     case PT_STRING:
-      m_XMLWriter.WriteLineNode(
-          pOutputName, pCondition,
-          m_XMLWriter.FixupXMLString(pPropertyState->m_StringValue.Get()));
+      m_XMLWriter.WriteLineNode(pOutputName, pCondition,
+                                m_XMLWriter.FixupXMLString(pValueStr));
       break;
 
     case PT_LIST:
     case PT_INTEGER:
-      m_XMLWriter.WriteLineNode(pOutputName, pCondition,
-                                pPropertyState->m_StringValue.Get());
+      m_XMLWriter.WriteLineNode(pOutputName, pCondition, pValueStr);
       break;
 
     case PT_IGNORE:
@@ -631,6 +639,87 @@ bool CProjectGenerator_Win32::WriteProperty(
   }
 
   return true;
+}
+
+static bool GetCompilerToolProperty(
+  CProjectConfiguration *pConfig, const char *pPropertyName, CUtlString &value
+)
+{
+  const PropertyState_t *pState = pConfig->GetCompilerTool()->m_PropertyStates.GetProperty( pPropertyName );
+  if ( !pState || pState->m_StringValue.IsEmpty() )
+  {
+    return false;
+  }
+
+  value = pState->m_StringValue;
+  
+  return true;
+}
+
+bool CProjectGenerator_Win32::GenerateToolProperty(
+  const char *pOutputName, const char *pScriptValue, CUtlString &outputWrite, const char *pConfigName
+)
+{
+  CProjectConfiguration *pRootConfig{ nullptr };
+  
+  if ( pConfigName )
+  {
+    m_pVCProjGenerator->GetRootConfiguration( pConfigName, &pRootConfig );
+  }
+  else
+  {
+    // project level property, any config will do
+    CUtlVector<CUtlString> configurationNames;
+    m_pVCProjGenerator->GetAllConfigurationNames( configurationNames );
+  
+    if ( configurationNames.Count() )
+    {
+      m_pVCProjGenerator->GetRootConfiguration( configurationNames[ 0 ].Get(), &pRootConfig );
+    }
+  }
+
+  if ( !pRootConfig )
+  {
+    g_pVPC->VPCError( "No configuration to generate property \"%s\" from.", pOutputName );
+  }
+
+  CUtlString configValue;
+  if ( !V_stricmp( pOutputName, "NMakePreprocessorDefinitions" ) )
+  {
+    if ( !GetCompilerToolProperty( pRootConfig, g_pOption_PreprocessorDefinitions, configValue ) )
+    {
+      return false;
+    }
+
+    outputWrite = pScriptValue;
+    outputWrite += configValue;
+    
+    return true;
+  }
+
+  if ( !V_stricmp( pOutputName, "NMakeIncludeSearchPath" ) )
+  {
+    if ( !GetCompilerToolProperty( pRootConfig, g_pOption_AdditionalIncludeDirectories, configValue ) )
+    {
+      return false;
+    }
+
+    outputWrite = configValue;
+    
+    if ( pScriptValue && pScriptValue[ 0 ] )
+    {
+      outputWrite += ";";
+      outputWrite += pScriptValue;
+    }
+    
+    V_FixSlashes( outputWrite.Get() );
+    
+    return true;
+  }
+
+  g_pVPC->VPCWarning( "No property generator defined for \"%s\"", pOutputName );
+
+  return false;
 }
 
 bool CProjectGenerator_Win32::Save(const char *pOutputFilename) {

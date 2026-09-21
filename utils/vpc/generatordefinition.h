@@ -52,6 +52,9 @@ struct ToolProperty_t {
     m_bAppendSlash = false;
     m_bPreferSemicolonNoComma = false;
     m_bPreferSemicolonNoSpace = false;
+
+    m_bGeneratedOnOutput = false;
+    m_bIgnoreForOutput   = false;
   }
 
   CUtlString m_ParseString;
@@ -66,8 +69,12 @@ struct ToolProperty_t {
   bool m_bEmitAsGlobalProperty;
   bool m_bInvertOutput;
   bool m_bAppendSlash;
-  bool m_bPreferSemicolonNoComma;
-  bool m_bPreferSemicolonNoSpace;
+  
+  bool m_bPreferSemicolonNoComma; //
+  bool m_bPreferSemicolonNoSpace; //
+
+  bool m_bGeneratedOnOutput; // value from the output instead script's one
+  bool m_bIgnoreForOutput; // value will be never written to the project file
 };
 
 struct GeneratorTool_t {

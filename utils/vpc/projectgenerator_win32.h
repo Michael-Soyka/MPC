@@ -50,6 +50,9 @@ class CProjectGenerator_Win32 : public IVCProjWriter {
 
   const char *GetKeyNameForFile(CProjectFile *pFile);
 
+  bool GenerateToolProperty( const char *pOutputName, const char *pScriptValue,
+                              CUtlString &outputWrite, const char *pConfigName );
+
   CXMLWriter m_XMLWriter;
   CXMLWriter m_XMLFilterWriter;
 
