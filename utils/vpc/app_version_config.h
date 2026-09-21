@@ -8,7 +8,7 @@
 #include "product_version_config.h"
 
 // App long product name.
-#define SE_PRODUCT_NAME_STRING "VPC"
+#define SE_PRODUCT_NAME_STRING "Moon Project Creator"
 
 // App file version header.
 #define SE_APP_VER_FILE_VERSION_HEADER SE_VER_PRODUCT_VERSION_HEADER

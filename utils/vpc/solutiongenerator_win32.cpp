@@ -165,7 +165,7 @@ class CSlnSolutionWriter_Win32 : public IBaseSolutionWriter_Win32 {
 
     fprintf(m_fp, "#\n");
     fprintf(m_fp, "# Automatically generated solution:\n");
-    fprintf(m_fp, "# devtools\\bin\\vpc ");
+    fprintf(m_fp, "# devtools\\bin\\mpc ");
 
     for (int k = 1; k < __argc; ++k) fprintf(m_fp, "%s ", __argv[k]);
 
@@ -515,7 +515,7 @@ class CSlnxSolutionWriter_Win32 : public IBaseSolutionWriter_Win32 {
 
   void WriteHeader() override {
     fprintf(m_fp, "<!-- Automatically generated solution: -->\n");
-    fprintf(m_fp, "<!--  devtools\\bin\\vpc ");
+    fprintf(m_fp, "<!--  devtools\\bin\\mpc ");
 
     for (int k = 1; k < __argc; ++k) fprintf(m_fp, "%s ", __argv[k]);
 

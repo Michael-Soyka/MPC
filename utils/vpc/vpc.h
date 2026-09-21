@@ -289,7 +289,7 @@ class CVPC {
   // tests.
   //
   // If bForce is false, then it does a CRC check before visiting any project to
-  // see if the target project file is already up-to-date with its .vpc file.
+  // see if the target project file is already up-to-date with its .mpc file.
   void IterateTargetProjects(CUtlVector<projectIndex_t> &projectList,
                              IProjectIterator *pIterator);
 
@@ -374,7 +374,7 @@ class CVPC {
   bool m_bShowCaseIssues;
   bool m_bVerboseMakefile;
   bool m_bP4SCC;  // VPC_SCC_INTEGRATION define, or "/srcctl" cmd line option,
-                  // or env var VPC_SRCCTL=1
+                  // or env var MPC_SRCCTL=1
   bool m_b32BitTools;  // Normally we prefer the 64-bit toolchain when building
                        // a 64-bit target. This turns that off.
 
@@ -394,12 +394,12 @@ class CVPC {
   // Path where vpc was started from
   CUtlString m_StartDirectory;
 
-  // Root path to the sources (i.e. the directory where the vpc_scripts
+  // Root path to the sources (i.e. the directory where the mpc_scripts
   // directory can be found in).
   CUtlString m_SourcePath;
 
   // path to the project being processed (i.e. the directory where this
-  // project's .vpc can be found).
+  // project's .mpc can be found).
   CUtlString m_ProjectPath;
 
   // strings derived from command-line commands which is checked alongside

@@ -4,14 +4,14 @@
 #define VPCCRCHECK_CRCCHECK_SHARED_H_
 
 #ifdef STANDALONE_VPC
-#define VPCCRCCHECK_EXE_FILENAME "vpc.exe"
+#define VPCCRCCHECK_EXE_FILENAME "mpc.exe"
 #else
 #define VPCCRCCHECK_EXE_FILENAME "vpccrccheck.exe"
 #endif
 
 // The file extension for the file that contains the CRCs that a vcproj depends
 // on.
-#define VPCCRCCHECK_FILE_EXTENSION "vpc_crc"
+#define VPCCRCCHECK_FILE_EXTENSION "mpc_crc"
 #define VPCCRCCHECK_FILE_VERSION_STRING "[vpc crc file version 2]"
 
 [[noreturn]] void Sys_Error(PRINTF_FORMAT_STRING const char *format, ...);

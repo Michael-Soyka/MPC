@@ -14,7 +14,7 @@
 static const char *k_pchSource = "Source Files";
 static const char *k_pchHeaders = "Header Files";
 static const char *k_pchResources = "Resources";
-static const char *k_pchVPCFiles = "VPC Files";
+static const char *k_pchVPCFiles = "MPC Files";
 
 void CProjectGenerator_CodeLite::GenerateCodeLiteProject(
     CBaseProjectDataCollector *pCollector, const char *pOutFilename,
@@ -124,7 +124,7 @@ void CProjectGenerator_CodeLite::GenerateCodeLiteProject(
       WriteFilesFolder(k_pchHeaders,
                        "*.h;*.H;*.hh;*.hpp;*.hxx;*.inc;*.sh;*.cpy;*.if");
       WriteFilesFolder(k_pchResources, "*.plist;*.strings;*.xib");
-      WriteFilesFolder(k_pchVPCFiles, "*.vpc");
+      WriteFilesFolder(k_pchVPCFiles, "*.mpc");
       --m_nIndent;
     }
     --m_nIndent;

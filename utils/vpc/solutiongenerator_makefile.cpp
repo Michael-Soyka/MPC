@@ -47,7 +47,7 @@ class CSolutionGenerator_Makefile : public IBaseSolutionGenerator {
 
     const char *pTargetPlatformName;
     // forestw: if PLATFORM macro exists we should use its value, this
-    // accommodates overrides of PLATFORM in .vpc files
+    // accommodates overrides of PLATFORM in .mpc files
     macro_t *pMacro = g_pVPC->FindOrCreateMacro("PLATFORM", false, NULL);
     if (pMacro)
       pTargetPlatformName = pMacro->value.String();
@@ -60,7 +60,7 @@ class CSolutionGenerator_Makefile : public IBaseSolutionGenerator {
     FILE *fp = fopen(pSolutionFilename, "wt");
     if (!fp) g_pVPC->VPCError("Can't open %s for writing.", pSolutionFilename);
 
-    fprintf(fp, "# VPC MASTER MAKEFILE\n\n");
+    fprintf(fp, "# MPC MASTER MAKEFILE\n\n");
 
     fprintf(fp,
             "# Disable built-in rules/variables. We don't depend on them, and "

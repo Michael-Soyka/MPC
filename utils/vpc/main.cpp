@@ -15,7 +15,7 @@
 
 #include "tier0/memdbgon.h"
 
-DEFINE_LOGGING_CHANNEL_NO_TAGS(LOG_VPC, "VPC");
+DEFINE_LOGGING_CHANNEL_NO_TAGS(LOG_VPC, "MPC");
 
 namespace {
 

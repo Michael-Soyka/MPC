@@ -306,7 +306,7 @@ class CProjectGenerator_Makefile : public CBaseProjectDataCollector {
     // TargetPlatformName
     const char *pTargetPlatformName;
     // forestw: if PLATFORM macro exists we should use its value, this
-    // accommodates overrides of PLATFORM in .vpc files
+    // accommodates overrides of PLATFORM in .mpc files
     macro_t *pMacro = g_pVPC->FindOrCreateMacro("PLATFORM", false, NULL);
     if (pMacro)
       pTargetPlatformName = pMacro->value.String();
@@ -609,13 +609,13 @@ class CProjectGenerator_Makefile : public CBaseProjectDataCollector {
 
     fprintf(fp, "LIBFILES = \\\n");
 
-    // Get original order the link files were specified in the .vpc files. See:
+    // Get original order the link files were specified in the .mpc files. See:
     //  https://stackoverflow.com/questions/45135/why-does-the-order-in-which-libraries-are-linked-sometimes-cause-errors-in-gcc
     // TL;DR. Gcc does a single pass through the list of libraries to resolve
     // references.
     //  If library A depends on symbols in library B, library A should appear
     //  first so we need to restore the original order to allow users to control
-    //  link order via their .vpc files.
+    //  link order via their .mpc files.
     CUtlSortVector<CFileConfig *, FileSortSortFunc> OriginalSort;
 
     for (int i = m_Files.First(); i != m_Files.InvalidIndex();

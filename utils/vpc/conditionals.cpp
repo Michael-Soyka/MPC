@@ -200,7 +200,7 @@ bool CVPC::EvaluateConditionalExpression(const char *expression) {
   const bool is_valid{expression_eval.Evaluate(rc, buffer, ::ResolveSymbol,
                                                ::SymbolSyntaxError)};
   if (!is_valid) {
-    g_pVPC->VPCSyntaxError("VPC Conditional Evaluation Error");
+    g_pVPC->VPCSyntaxError("MPC Conditional Evaluation Error");
   }
 
   return rc;

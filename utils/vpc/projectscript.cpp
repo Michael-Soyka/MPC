@@ -1501,10 +1501,10 @@ void VPC_PrepareToReadScript(const char *pInputScriptName, int depth,
 // custom builds steps needed to verify the .vcproj is up to date
 //-----------------------------------------------------------------------------
 void VPC_AddCurrentVPCScriptToProjectFolder(bool bDoCRCCheck) {
-  // skip including VPC scripts if NOVPC is defined
-  if (g_pVPC->EvaluateConditionalExpression("$NOVPC")) return;
+  // skip including VPC scripts if NOMPC is defined
+  if (g_pVPC->EvaluateConditionalExpression("$NOMPC")) return;
 
-  g_pVPC->GetProjectGenerator()->StartFolder("VPC Scripts");
+  g_pVPC->GetProjectGenerator()->StartFolder("MPC Scripts");
   g_pVPC->GetProjectGenerator()->StartFile(g_pVPC->GetScript().GetName(),
                                            false);
 
@@ -1538,7 +1538,7 @@ void VPC_AddCurrentVPCScriptToProjectFolder(bool bDoCRCCheck) {
       // this will write a sentinel file so we have a clear build target so we
       // can know the last time we checked
       g_pVPC->GetProjectGenerator()->HandleProperty(
-          "$Description", CFmtStr("\"Running VPC CRC Check - %s\"",
+          "$Description", CFmtStr("\"Running MPC CRC Check - %s\"",
                                   g_pVPC->GetScript().GetName()));
       // dimhotepus: Wrap in double quotes to handle paths with spaces.
       g_pVPC->GetProjectGenerator()->HandleProperty(

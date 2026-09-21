@@ -1725,7 +1725,7 @@ void CSolutionGenerator_Xcode::GenerateSolutionFile(
       {
         FOR_EACH_VEC(g_vecPGenerators, iGenerator) {
           CUtlVector<char *> folderNames;
-          V_SplitString("Source Files;Header Files;Resources;VPC Files", ";",
+          V_SplitString("Source Files;Header Files;Resources;MPC Files", ";",
                         folderNames);
 
           static const char *folderExtensions[] = {
@@ -1733,7 +1733,7 @@ void CSolutionGenerator_Xcode::GenerateSolutionFile(
               "*.bas;*.java;*.cs;*.sc;*.e;*.cob;*.html;*.tcl;*.py;*.pl;*.m;*."
               "mm",
               "*.h;*.H;*.hh;*.hpp;*.hxx;*.inc;*.sh;*.cpy;*.if",
-              "*.plist;*.strings;*.xib;*.rc;*.proto;*.nut", "*.vpc"};
+              "*.plist;*.strings;*.xib;*.rc;*.proto;*.nut", "*.mpc"};
 
           FOR_EACH_VEC(folderNames, iFolder) {
             WriteFilesFolder(

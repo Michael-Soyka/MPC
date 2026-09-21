@@ -26,7 +26,7 @@ enum k_EDependsOnFlags {
   0x01  // This tells it to build a graph of all projects in the source tree
         // _including_ all games.
 #define BUILDPROJDEPS_CHECK_ALL_PROJECTS \
-  0x02  // If this is set, then it reads all .vpc files.
+  0x02  // If this is set, then it reads all .mpc files.
         // If this is not set, then it only includes the files from the command
         // line with the "vpc +tier0 *bitmap +client /tf" syntax
 
@@ -113,7 +113,7 @@ class CDependency_Project : public CDependency {
   // Straight out of the $AdditionalOutputFiles key (split on semicolons).
   CUtlVector<CUtlString> m_AdditionalOutputFiles;
 
-  // This comes from the $Project key in the .vpc file.
+  // This comes from the $Project key in the .mpc file.
   CUtlString m_ProjectName;
 
   // Absolute path to the VCPROJ file (g_pVPC->GetOutputFilename() - see
@@ -183,7 +183,7 @@ class CProjectDependencyGraph : public IProjectIterator {
  private:
   void ClearAllDependencyMarks();
 
-  // Functions for the vpc.cache file management.
+  // Functions for the mpc.cache file management.
   bool LoadCache(const char *pFilename);
   bool SaveCache(const char *pFilename);
   void WriteString(FILE *fp, CUtlString &utlString);

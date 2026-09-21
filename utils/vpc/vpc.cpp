@@ -81,8 +81,8 @@ CVPC::CVPC() {
 #ifdef VPC_SCC_INTEGRATION
   m_bP4SCC = true;
 #endif
-  if (getenv("VPC_SRCCTL") != nullptr) {
-    m_bP4SCC = V_atoi(getenv("VPC_SRCCTL")) != 0;
+  if (getenv("MPC_SRCCTL") != nullptr) {
+    m_bP4SCC = V_atoi(getenv("MPC_SRCCTL")) != 0;
   }
 
 #ifdef WIN32
@@ -126,7 +126,7 @@ bool CVPC::Init(int argc, const char **argv) {
       (HasCommandLineParameter("/v") || HasCommandLineParameter("/verbose"));
   m_bQuiet =
       (HasCommandLineParameter("/q") || HasCommandLineParameter("/quiet") ||
-       (getenv("VPC_QUIET") && V_stricmp(getenv("VPC_QUIET"), "0")));
+       (getenv("MPC_QUIET") && V_stricmp(getenv("MPC_QUIET"), "0")));
 
 #ifndef STEAM
   LoggingSystem_PushLoggingState();
@@ -154,10 +154,10 @@ bool CVPC::Init(int argc, const char **argv) {
     m_nArgc--;
   }
 
-  Log_Msg(LOG_VPC, "VPC - Valve Project Creator For ");
+  Log_Msg(LOG_VPC, "MPC - Moon Project Creator For ");
   Log_Msg(LOG_VPC, "Visual Studio, Xcode and Make (Build: %s %s)\n", __DATE__, __TIME__);
   Log_Msg(LOG_VPC,
-          "(C) Copyright 1996-2026, Valve Corporation, All rights reserved.\n");
+          "(C) Copyright 1996-2026 Valve Corporation, 2020-2026 Moon-6 Team. All rights reserved.\n");
   Log_Msg(LOG_VPC, "\n");
 
   return true;
@@ -383,7 +383,7 @@ intp CVPC::GetProjectsInGroup(CUtlVector<projectIndex_t> &projectList,
 }
 
 //-----------------------------------------------------------------------------
-// Checks to ensure the bin path is in the same tree as the vpc_scripts
+// Checks to ensure the bin path is in the same tree as the mpc_scripts
 // Returns true if bin path valid
 //-----------------------------------------------------------------------------
 #if !defined(POSIX)
@@ -392,13 +392,13 @@ bool CVPC::CheckBinPath(char *pOutBinPath, int outBinPathSize) {
   char szDirectory[MAX_PATH];
   char szLastDirectory[MAX_PATH];
 
-  // non destructively determine the vpc_scripts directory
+  // non destructively determine the mpc_scripts directory
   bool bFound = false;
   szLastDirectory[0] = '\0';
   szScriptPath[0] = '\0';
   V_GetCurrentDirectory(szDirectory, sizeof(szDirectory));
   while (1) {
-    V_ComposeFileName(szDirectory, "vpc_scripts", szScriptPath,
+    V_ComposeFileName(szDirectory, "mpc_scripts", szScriptPath,
                       sizeof(szScriptPath));
     struct _stat statBuf;
     if (_stat(szScriptPath, &statBuf) != -1) {
@@ -424,14 +424,14 @@ bool CVPC::CheckBinPath(char *pOutBinPath, int outBinPathSize) {
   if (!bFound) {
     VPCError(
         "Failed to determine source directory from current path. Expecting "
-        "'vpc_scripts' in source path.");
+        "'mpc_scripts' in source path.");
   }
 
   char szSourcePath[MAX_PATH];
   strcpy(szSourcePath, szDirectory);
 
   // check to ensure that executeable and src directory are in the same tree
-  // executeable needs to be tightly bound to its vpc_scripts
+  // executeable needs to be tightly bound to its mpc_scripts
   char szModuleBinPath[MAX_PATH];
   GetModuleFileName(NULL, szModuleBinPath, sizeof(szModuleBinPath));
 
@@ -442,7 +442,7 @@ bool CVPC::CheckBinPath(char *pOutBinPath, int outBinPathSize) {
   V_strncpy(pOutBinPath, szModuleBinPath, outBinPathSize);
 
   // allowed to run from a root "devbin", for use with junctions
-  if (Sys_StringPatternMatch("?:\\devbin\\vpc.exe", szModuleBinPath))
+  if (Sys_StringPatternMatch("?:\\devbin\\mpc.exe", szModuleBinPath))
     return true;
 
   char *pString = V_stristr(szModuleBinPath, "\\devtools\\bin\\");
@@ -467,7 +467,7 @@ bool CVPC::CheckBinPath(char *pOutBinPath, int outBinPathSize) {
   // path use expected source path which is based on user's cwd to get the real
   // bin path
   V_strncpy(pOutBinPath, szSourcePath, outBinPathSize);
-  V_strncat(pOutBinPath, "\\devtools\\bin\\vpc.exe", outBinPathSize);
+  V_strncat(pOutBinPath, "\\devtools\\bin\\mpc.exe", outBinPathSize);
   struct _stat statBuf;
   if (_stat(pOutBinPath, &statBuf) == -1) {
     VPCError("Correct executeable missing, should be at '%s'", pOutBinPath);
@@ -499,7 +499,7 @@ void CVPC::DetermineSourcePath() {
   char old_path[MAX_PATH];
   V_GetCurrentDirectory(old_path, sizeof(old_path));
 
-  // find vpc_scripts from cwd
+  // find mpc_scripts from cwd
   last_directory[0] = '\0';
   bool is_found{false};
 
@@ -513,7 +513,7 @@ void CVPC::DetermineSourcePath() {
     V_strncpy(last_directory, source_path, sizeof(last_directory));
 
     char test_directory[MAX_PATH];
-    V_ComposeFileName(source_path, "vpc_scripts", test_directory,
+    V_ComposeFileName(source_path, "mpc_scripts", test_directory,
                       sizeof(test_directory));
 
     struct _stat statBuf;
@@ -532,7 +532,7 @@ void CVPC::DetermineSourcePath() {
   if (!is_found) {
     VPCError(
         "Failed to determine source directory from current path. Expecting "
-        "'vpc_scripts' in source path.");
+        "'mpc_scripts' in source path.");
   }
 
   // Remember the source path and restore the path to where it was.
@@ -546,7 +546,7 @@ void CVPC::DetermineSourcePath() {
 }
 
 //-----------------------------------------------------------------------------
-// Sets the working directory to .../vpc_scripts as all scripts are
+// Sets the working directory to .../mpc_scripts as all scripts are
 // guaranteed relative to the vpc script directory.
 //-----------------------------------------------------------------------------
 void CVPC::SetDefaultSourcePath() { V_SetCurrentDirectory(m_SourcePath.Get()); }
@@ -593,10 +593,10 @@ void CVPC::SpewUsage(void) {
 
     if (!m_bHelp) {
       // terse
-      Log_Msg(LOG_VPC, "Type vpc /h for help...\n");
+      Log_Msg(LOG_VPC, "Type mpc /h for help...\n");
     } else {
       // verbose
-      Log_Msg(LOG_VPC, "usage: vpc [options] <+/-/*project or group>\n");
+      Log_Msg(LOG_VPC, "usage: mpc [options] <+/-/*project or group>\n");
 
       Log_Msg(LOG_VPC, "\n");
       Log_Msg(LOG_VPC, "Examples:\n");
@@ -604,7 +604,7 @@ void CVPC::SpewUsage(void) {
       Log_Msg(LOG_VPC, "\n");
       Log_Msg(LOG_VPC, "  Single .vcproj generation:\n");
       Log_Msg(LOG_VPC,
-              "    vpc +client /hl2 <-- Creates a Win32 .vcproj for the "
+              "    mpc +client /hl2 <-- Creates a Win32 .vcproj for the "
               "HL2 client.\n");
 
       Log_Msg(LOG_VPC, "\n");
@@ -612,13 +612,13 @@ void CVPC::SpewUsage(void) {
               "  Multiple .vcproj generation - Multiple Projects for Games and "
               "Platforms:\n");
       Log_Msg(LOG_VPC,
-              "    vpc +client /hl2 /tf <-- Creates ALL the Win32 "
+              "    mpc +client /hl2 /tf <-- Creates ALL the Win32 "
               ".vcprojs for the HL2 and TF client.\n");
       Log_Msg(LOG_VPC,
-              "    vpc +gamedlls /allgames <-- Creates ALL the Win32 "
+              "    mpc +gamedlls /allgames <-- Creates ALL the Win32 "
               ".vcprojs for client and server for all GAMES.\n");
       Log_Msg(LOG_VPC,
-              "    vpc +tools -tier0 /win32 <-- Creates ALL the Win32 "
+              "    mpc +tools -tier0 /win32 <-- Creates ALL the Win32 "
               ".vcprojs for the tool projects but not the tier0 "
               "project.\n");
 
@@ -641,7 +641,7 @@ void CVPC::SpewUsage(void) {
       Log_Msg(LOG_VPC, "\n--- OPTIONS ---\n");
       Log_Msg(LOG_VPC,
               "[/q]:          Quiet mode (quiet mode is automatically on if "
-              "the VPC_QUIET environment variable is set)\n");
+              "the MPC_QUIET environment variable is set)\n");
       Log_Msg(LOG_VPC, "[/v]:          Verbose\n");
       Log_Msg(
           LOG_VPC,
@@ -653,11 +653,11 @@ void CVPC::SpewUsage(void) {
 #ifdef VPC_SCC_INTEGRATION
       Log_Msg(LOG_VPC,
               "[/nosrcctl]:   Disable P4SCC source control integration - can "
-              "also set environment variable VPC_SRCCTL to 0\n");
+              "also set environment variable MPC_SRCCTL to 0\n");
 #else
       Log_Msg(LOG_VPC,
               "[/srcctl]:     Enable P4SCC source control integration - can "
-              "also set environment variable VPC_SRCCTL to 1\n");
+              "also set environment variable MPC_SRCCTL to 1\n");
 #endif
       Log_Msg(LOG_VPC,
               "[/mirror]:     <path> - Mirror output files to specified path. "
@@ -742,19 +742,19 @@ void CVPC::SpewUsage(void) {
               "               on your p4 change list(s).  Use with /p4sln.\n");
       Log_Msg(LOG_VPC,
               "[/checkfiles]: Check for the existence of files in $file "
-              "commands. For debugging vpc files.\n");
+              "commands. For debugging mpc files.\n");
       Log_Msg(LOG_VPC,
               "               Only works if the currrent directory is the "
               "project directory.\n");
-      //			Log_Msg( LOG_VPC, "[/novpcgame]:  Disable
-      // reserved vpc macro $VPCGAME and $VPCGAMECAPS.\n" );
+      //			Log_Msg( LOG_VPC, "[/nompcgame]:  Disable
+      // reserved mpc macro $MPCGAME and $MPCGAMECAPS.\n" );
       // Log_Msg( LOG_VPC, " By default if a single game is specified on command
       // line, then that specified\n" ); 			Log_Msg(
-      // LOG_VPC, "               game name will be used as a value for $VPCGAME
-      // and $VPCGAMECAPS macros.\n" );
+      // LOG_VPC, "               game name will be used as a value for $MPCGAME
+      // and $MPCGAMECAPS macros.\n" );
       Log_Msg(LOG_VPC,
               "[/define:xxx]: Enable a custom conditional $XXX to use for "
-              "quick testing in VPC files.\n");
+              "quick testing in MPC files.\n");
     }
   }
 
@@ -930,7 +930,7 @@ void CVPC::HandleSingleCommandLineArg(const char *pArg) {
       // Ensure this changes CRC. Ideally it would only change if anything ended
       // up using the PCH conditional
       m_ExtraOptionsCRCString += pArgName;
-    } else if (!V_stricmp(pArgName, "novpcgame")) {
+    } else if (!V_stricmp(pArgName, "nompcgame")) {
       m_bEnableVpcGameMacro = false;
     } else if (!V_stricmp(pArgName, "checkfiles")) {
       m_bCheckFiles = true;
@@ -1540,7 +1540,7 @@ bool CVPC::BuildTargetProjects() {
   IterateTargetProjects(m_TargetProjects, &iterator);
 
   if (GetMissingFilesCount() > 0) {
-    VPCError("%d files missing. VPC failed.\n", GetMissingFilesCount());
+    VPCError("%d files missing. MPC failed.\n", GetMissingFilesCount());
   }
 
   // Catch user attention to notify lack of any expected output
@@ -1628,7 +1628,7 @@ void CVPC::FindProjectFromVCPROJ(const char *pScriptNameVCProj) {
   for (size_t i = 0; i < V_ARRAYSIZE(localArgv); i++) {
     localArgv[i] = argBuffers[i];
   }
-  strcpy(localArgv[localArgc++], "vpc.exe");
+  strcpy(localArgv[localArgc++], "mpc.exe");
   sprintf(localArgv[localArgc++], "+%s", szProject);
   for (int i = 0; i < numTokens; i++) {
     sprintf(localArgv[localArgc++], "/%s", szTokens[i]);
@@ -1638,7 +1638,7 @@ void CVPC::FindProjectFromVCPROJ(const char *pScriptNameVCProj) {
 }
 
 //-----------------------------------------------------------------------------
-// This sets up various defines that are funneled into the .vpc script and the
+// This sets up various defines that are funneled into the .mpc script and the
 // #defines in the engine.
 //
 // VPC makes a distinction between defines and macros (defines are just binary
@@ -1994,7 +1994,7 @@ void CVPC::SetMacrosAndConditionals() {
     SetMacro("_EXE_EXT", ".exe", false);
   }
 
-  // Set VPCGAME macro based on target game
+  // Set MPCGAME macro based on target game
   if (m_bEnableVpcGameMacro) {
     intp nGameDefineIndex = -1;
     for (intp iOtherGameDefine = 0; iOtherGameDefine < m_Conditionals.Count();
@@ -2005,25 +2005,25 @@ void CVPC::SetMacrosAndConditionals() {
           nGameDefineIndex = iOtherGameDefine;
         } else {
           // uh-oh, multiple games defined for target build
-          // can't set VPCGAME accurately
+          // can't set MPCGAME accurately
           nGameDefineIndex = -2;
         }
       }
     }
 
-    SetMacro("VPCGAME",
+    SetMacro("MPCGAME",
              (nGameDefineIndex >= 0)
                  ? m_Conditionals[nGameDefineIndex].name.Get()
                  : "valve",
              true);
-    SetMacro("VPCGAMECAPS",
+    SetMacro("MPCGAMECAPS",
              (nGameDefineIndex >= 0)
                  ? m_Conditionals[nGameDefineIndex].upperCaseName.Get()
                  : "VALVE",
              true);
 
     // force this into additional CRC string
-    m_ExtraOptionsCRCString += CFmtStr("/vpcgame:%s", GetMacroValue("VPCGAME"));
+    m_ExtraOptionsCRCString += CFmtStr("/mpcgame:%s", GetMacroValue("MPCGAME"));
   }
 }
 
@@ -2330,7 +2330,7 @@ int CVPC::ProcessCommandLine() {
       break;
     }
 
-    if (V_stristr(argv, ".vpc")) {
+    if (V_stristr(argv, ".mpc")) {
       // caller is using a local vpc, i.e. one that is not hooked into the
       // groups
       script_name = argv;
@@ -2367,11 +2367,11 @@ int CVPC::ProcessCommandLine() {
 
   if (!is_vgc) {
     // no script, use default group
-    script_name = "vpc_scripts\\default.vgc";
+    script_name = "mpc_scripts\\default.vgc";
     is_vgc = true;
   }
 
-  // set the current directory, it is to be expected src, i.e. .\vpc_scripts\..
+  // set the current directory, it is to be expected src, i.e. .\mpc_scripts\..
   SetDefaultSourcePath();
 
   char current_directory[MAX_PATH];

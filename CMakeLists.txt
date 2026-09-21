@@ -1,4 +1,4 @@
-# Valve Project Creator is a tool to generate build systems for Visual Studio, Xcode and Make.
+# Moon Project Creator is a tool to generate build systems for Visual Studio, Xcode and Make.
 #
 # See https://developer.valvesoftware.com/wiki/Valve_Project_Creator
 
@@ -36,7 +36,7 @@ set(SE_VPC_ROOT_DIR "${CMAKE_SOURCE_DIR}" CACHE STRING
   "Directory root of the vpc project.")
 
 ## Package information.
-set(PACKAGE_NAME   "vpc")
+set(PACKAGE_NAME   "mpc")
 
 # C++ standard can be overridden when this is used as a sub-project.
 if(NOT CMAKE_CXX_STANDARD)
@@ -119,8 +119,8 @@ else()
   set(SE_VPC_OS_POSIX OFF CACHE BOOL "POSIX compatible os is NOT build system.")
 endif()
 
-set(SE_VPC_PRODUCT_NAME "vpc" CACHE STRING
-  "Name of the vpc product.")
+set(SE_VPC_PRODUCT_NAME "mpc" CACHE STRING
+  "Name of the mpc product.")
 
 set(SE_VPC_CMAKE_GENERATOR "${CMAKE_GENERATOR}" CACHE STRING
   "CMake generator used to generate build tree." FORCE)
@@ -212,7 +212,7 @@ message(STATUS "[common]: ${PACKAGE_NAME} cxx compiler: ${SE_VPC_CXX_COMPILER}."
 message(STATUS "[common]: ${PACKAGE_NAME} build type: ${SE_VPC_BUILD_TYPE}.")
 
 if (SE_VPC_OS_WIN)
-  set(SE_PRODUCT_NAME "Valve Project Creator")
+  set(SE_PRODUCT_NAME "Moon Project Creator")
 
   # Generate common product version info.
   configure_file(

@@ -555,12 +555,12 @@ void CProjectDependencyGraph::BuildProjectDependencies(
   // Load any prior results so we don't have to regenerate the whole cache
   // (which can take a couple minutes).
   char sCacheFile[MAX_PATH] = {0};
-  V_ComposeFileName(g_pVPC->GetSourcePath(), "vpc.cache", sCacheFile,
+  V_ComposeFileName(g_pVPC->GetSourcePath(), "mpc.cache", sCacheFile,
                     sizeof(sCacheFile));
   if (m_bFullDependencySet) {
     if (!LoadCache(sCacheFile)) {
       Log_Msg(LOG_VPC,
-              "\n\nNo vpc.cache file found.\nThis will take a minute to "
+              "\n\nNo mpc.cache file found.\nThis will take a minute to "
               "generate dependency info from all the sources.\nPut the kleenex "
               "down.\nNext time it will have a cache file and be fast.\n\n");
     }
