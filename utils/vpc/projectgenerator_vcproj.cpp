@@ -894,8 +894,12 @@ void CVCProjGenerator::EndProject() {
   CRC32_t scriptCRC = 0;
   const char *pScriptName = m_pGeneratorDefinition->GetScriptName(&scriptCRC);
   char scriptPath[MAX_PATH];
-  g_pVPC->ResolveMacrosInString(CFmtStr("$SRCDIR\\%s", pScriptName), scriptPath,
-                                sizeof(scriptPath));
+  if (V_IsAbsolutePath(pScriptName)) {
+    V_strncpy(scriptPath, pScriptName, sizeof(scriptPath));
+  } else {
+    g_pVPC->ResolveMacrosInString(CFmtStr("$SRCDIR\\%s", pScriptName),
+                                  scriptPath, sizeof(scriptPath));
+  }
   g_pVPC->AddScriptToCRCCheck(scriptPath, scriptCRC);
 
   // done once, right before save
