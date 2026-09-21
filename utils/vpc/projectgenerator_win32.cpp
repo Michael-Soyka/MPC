@@ -27,7 +27,7 @@ IBaseProjectGenerator *GetWin32ProjectGenerator() {
 
 CProjectGenerator_Win32::CProjectGenerator_Win32() {
   m_pVCProjGenerator = new CVCProjGenerator();
-  m_pVCProjGenerator->SetupGeneratorDefinition(this, "win32_2010.def",
+  m_pVCProjGenerator->SetupGeneratorDefinition(this, "win32.def",
                                                s_Win32PropertyNames);
 }
 
