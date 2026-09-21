@@ -20,6 +20,7 @@ static KeywordName_t s_KeywordNameTable[] = {
     {"$PreLinkEvent", KEYWORD_PRELINKEVENT},
     {"$PostBuildEvent", KEYWORD_POSTBUILDEVENT},
     {"$CustomBuildStep", KEYWORD_CUSTOMBUILDSTEP},
+    {"$Intellisense", KEYWORD_INTELLISENSE},
 };
 
 const char *CVPC::KeywordToName(configKeyword_e keyword) {

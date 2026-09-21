@@ -201,6 +201,7 @@ class CProjectConfiguration {
   CPreLinkEventTool *GetPreLinkEventTool() { return m_pPreLinkEventTool; }
   CPostBuildEventTool *GetPostBuildEventTool() { return m_pPostBuildEventTool; }
   CCustomBuildTool *GetCustomBuildTool() { return m_pCustomBuildTool; }
+  CProjectTool *GetIntellisenseTool() { return m_pIntellisenseTool; }
 
   bool IsEmpty();
 
@@ -228,6 +229,7 @@ class CProjectConfiguration {
   CPreLinkEventTool *m_pPreLinkEventTool;
   CPostBuildEventTool *m_pPostBuildEventTool;
   CCustomBuildTool *m_pCustomBuildTool;
+  CProjectTool *m_pIntellisenseTool;
 };
 
 class IVCProjWriter {
@@ -317,6 +319,7 @@ class CVCProjGenerator : public CBaseProjectDataCollector {
   CPreLinkEventTool *m_pPreLinkEventTool;
   CPostBuildEventTool *m_pPostBuildEventTool;
   CCustomBuildTool *m_pCustomBuildTool;
+  CProjectTool *m_pIntellisenseTool;
 
   CProjectConfiguration *m_pConfig;
   CProjectConfiguration *m_pFileConfig;

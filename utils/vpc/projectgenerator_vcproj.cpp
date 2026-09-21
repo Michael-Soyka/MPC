@@ -625,6 +625,7 @@ CProjectConfiguration::CProjectConfiguration(CVCProjGenerator *pGenerator,
   m_pPreLinkEventTool = NULL;
   m_pPostBuildEventTool = NULL;
   m_pCustomBuildTool = NULL;
+  m_pIntellisenseTool = NULL;
 
   if (!m_bIsFileConfig) {
     m_pDebuggingTool = new CDebuggingTool(pGenerator);
@@ -639,6 +640,7 @@ CProjectConfiguration::CProjectConfiguration(CVCProjGenerator *pGenerator,
     m_pPreLinkEventTool = new CPreLinkEventTool(pGenerator);
     m_pPostBuildEventTool = new CPostBuildEventTool(pGenerator);
     m_pCustomBuildTool = new CCustomBuildTool(pGenerator, pConfigName, false);
+    m_pIntellisenseTool = new CProjectTool(pGenerator);
   } else {
     // a file's config can only be the compiler or the custom build tool
     const char *pExtension = V_GetFileExtension(pFilename);
@@ -667,6 +669,7 @@ CProjectConfiguration::~CProjectConfiguration() {
   delete m_pPreLinkEventTool;
   delete m_pPostBuildEventTool;
   delete m_pCustomBuildTool;
+  delete m_pIntellisenseTool;
 }
 
 bool CProjectConfiguration::IsEmpty() {
@@ -716,6 +719,11 @@ bool CProjectConfiguration::IsEmpty() {
   if (m_pCustomBuildTool &&
       m_pCustomBuildTool->m_PropertyStates.m_Properties.Count())
     return false;
+
+  if ( m_pIntellisenseTool && m_pIntellisenseTool->m_PropertyStates.m_Properties.Count() )
+  {
+    return false;
+  }
 
   return true;
 }
@@ -825,6 +833,7 @@ void CVCProjGenerator::Clear() {
   m_pPreLinkEventTool = NULL;
   m_pPostBuildEventTool = NULL;
   m_pCustomBuildTool = NULL;
+  m_pIntellisenseTool = NULL;
 
   m_spFolderStack.Purge();
   m_spCompilerStack.Purge();
@@ -1269,6 +1278,15 @@ bool CVCProjGenerator::StartPropertySection(configKeyword_e eKeyword,
       bHandled = true;
       break;
 
+    case KEYWORD_INTELLISENSE:
+      m_pIntellisenseTool = m_pConfig->GetIntellisenseTool();
+      if (!m_pIntellisenseTool) {
+        g_pVPC->VPCError("Could not get %s tool interface from configuration",
+                         g_pVPC->KeywordToName(eKeyword));
+      }
+      bHandled = true;
+      break;
+
     default:
       // unknown
       return false;
@@ -1386,6 +1404,10 @@ void CVCProjGenerator::HandleProperty(const char *pPropertyName,
 
     case KEYWORD_CUSTOMBUILDSTEP:
       pTool = m_pCustomBuildTool;
+      break;
+
+    case KEYWORD_INTELLISENSE:
+      pTool = m_pIntellisenseTool;
       break;
 
     default:
