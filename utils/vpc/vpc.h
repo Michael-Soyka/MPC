@@ -146,13 +146,10 @@ struct IProjectIterator {
 #include "baseprojectdatacollector.h"
 #include "projectgenerator_vcproj.h"
 #include "projectgenerator_win32.h"
-#include "projectgenerator_win32_2010.h"
 #endif
 
 enum EVSVersion {
   k_EVSVersion_Invalid,
-  k_EVSVersion_2005,
-  k_EVSVersion_2008,
   k_EVSVersion_2010,
   k_EVSVersion_2012,
   k_EVSVersion_2013,
@@ -193,7 +190,6 @@ class CVPC {
   bool IsDecorateProject() const { return m_bDecorateProject; }
   const char *GetDecorateString() { return m_strDecorate.String(); }
   bool IsCheckFiles() const { return m_bCheckFiles; }
-  bool Is2008() const { return m_eVSVersion == k_EVSVersion_2008; }
   bool Is2010() const { return m_eVSVersion == k_EVSVersion_2010; }
   bool Is2010PlusFileFormat() const { return m_bUseVS2010FileFormat; }
   bool Is2012() const { return m_eVSVersion == k_EVSVersion_2012; }

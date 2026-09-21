@@ -27,124 +27,200 @@ IBaseProjectGenerator *GetWin32ProjectGenerator() {
 
 CProjectGenerator_Win32::CProjectGenerator_Win32() {
   m_pVCProjGenerator = new CVCProjGenerator();
-  m_pVCProjGenerator->SetupGeneratorDefinition(this, "win32_2005.def",
+  m_pVCProjGenerator->SetupGeneratorDefinition(this, "win32_2010.def",
                                                s_Win32PropertyNames);
 }
 
-bool CProjectGenerator_Win32::WriteFile(CProjectFile *pFile) {
-  m_XMLWriter.PushNode("File");
-  m_XMLWriter.Write(CFmtStrMax("RelativePath=\"%s\"", pFile->m_Name.Get()));
-  m_XMLWriter.Write(">");
+enum TypeKeyNames_e {
+  TKN_LIBRARY = 0,
+  TKN_INCLUDE,
+  TKN_COMPILE,
+  TKN_RESOURCECOMPILE,
+  TKN_CUSTOMBUILD,
+  TKN_NONE,
+  TKN_MAX_COUNT,
+};
 
-  for (intp i = 0; i < pFile->m_Configs.Count(); i++) {
-    if (!WriteConfiguration(pFile->m_Configs[i])) return false;
+static const char *s_TypeKeyNames[] = {"Library",     "ClInclude",
+                                       "ClCompile",   "ResourceCompile",
+                                       "CustomBuild", "None"};
+
+const char *CProjectGenerator_Win32::GetKeyNameForFile(
+    CProjectFile *pFile) {
+  static_assert(V_ARRAYSIZE(s_TypeKeyNames) == TKN_MAX_COUNT);
+
+  const char *pExtension = V_GetFileExtension(pFile->m_Name.Get());
+
+  const char *pKeyName = s_TypeKeyNames[TKN_NONE];
+  if (pExtension) {
+    if (pFile->m_Configs.Count() && pFile->m_Configs[0]->GetCustomBuildTool()) {
+      pKeyName = s_TypeKeyNames[TKN_CUSTOMBUILD];
+    } else if (IsCFileExtension(pExtension)) {
+      pKeyName = s_TypeKeyNames[TKN_COMPILE];
+    } else if (IsHFileExtension(pExtension)) {
+      pKeyName = s_TypeKeyNames[TKN_INCLUDE];
+    } else if (!V_stricmp(pExtension, "lib")) {
+      pKeyName = s_TypeKeyNames[TKN_LIBRARY];
+    } else if (!V_stricmp(pExtension, "rc")) {
+      pKeyName = s_TypeKeyNames[TKN_RESOURCECOMPILE];
+    }
   }
 
-  m_XMLWriter.PopNode(true);
+  return pKeyName;
+}
+
+bool CProjectGenerator_Win32::WritePropertyGroupTool(
+    CProjectTool *pProjectTool, CProjectConfiguration *pConfiguration) {
+  if (!pProjectTool) return true;
+
+  for (intp i = 0;
+       i < pProjectTool->m_PropertyStates.m_PropertiesInOutputOrder.Count();
+       i++) {
+    intp sortedIndex =
+        pProjectTool->m_PropertyStates.m_PropertiesInOutputOrder[i];
+    if (!pProjectTool->m_PropertyStates.m_Properties[sortedIndex]
+             .m_pToolProperty->m_bEmitAsGlobalProperty)
+      continue;
+
+    if (!WriteProperty(
+            &pProjectTool->m_PropertyStates.m_Properties[sortedIndex], true,
+            pConfiguration->m_Name.Get()))
+      return false;
+  }
 
   return true;
 }
 
-bool CProjectGenerator_Win32::WriteFolder(CProjectFolder *pFolder) {
-  m_XMLWriter.PushNode("Filter");
-  // String() returns temporary object, so save name in var to prevent stale
-  // memory usage.
-  CUtlString name = m_XMLWriter.FixupXMLString(pFolder->m_Name.Get());
-  m_XMLWriter.Write(CFmtStrMax("Name=\"%s\"", name.String()));
-  m_XMLWriter.Write(">");
+bool CProjectGenerator_Win32::WriteFile(CProjectFile *pFile,
+                                             const char *pFileTypeName) {
+  const char *pKeyName = GetKeyNameForFile(pFile);
+  if (V_stricmp(pFileTypeName, pKeyName)) {
+    // skip it
+    return true;
+  }
+
+  if (!pFile->m_Configs.Count()) {
+    m_XMLWriter.Write(
+        CFmtStrMax("<%s Include=\"%s\" />", pKeyName, pFile->m_Name.Get()));
+  } else {
+    m_XMLWriter.PushNode(pKeyName,
+                         CFmtStr("Include=\"%s\"", pFile->m_Name.Get()));
+
+    for (intp i = 0; i < pFile->m_Configs.Count(); i++) {
+      if (!WriteConfiguration(pFile->m_Configs[i])) return false;
+    }
+
+    m_XMLWriter.PopNode(true);
+  }
+
+  return true;
+}
+
+bool CProjectGenerator_Win32::WriteFolder(CProjectFolder *pFolder,
+                                               const char *pFileTypeName,
+                                               int nDepth) {
+  if (!nDepth) {
+    m_XMLWriter.PushNode("ItemGroup");
+  }
 
   for (auto iIndex = pFolder->m_Files.Head();
        iIndex != pFolder->m_Files.InvalidIndex();
        iIndex = pFolder->m_Files.Next(iIndex)) {
-    if (!WriteFile(pFolder->m_Files[iIndex])) return false;
+    if (!WriteFile(pFolder->m_Files[iIndex], pFileTypeName)) return false;
   }
 
   for (auto iIndex = pFolder->m_Folders.Head();
        iIndex != pFolder->m_Folders.InvalidIndex();
        iIndex = pFolder->m_Folders.Next(iIndex)) {
-    if (!WriteFolder(pFolder->m_Folders[iIndex])) return false;
+    if (!WriteFolder(pFolder->m_Folders[iIndex], pFileTypeName, nDepth + 1))
+      return false;
   }
 
-  m_XMLWriter.PopNode(true);
+  if (!nDepth) {
+    m_XMLWriter.PopNode(true);
+  }
 
   return true;
 }
 
 bool CProjectGenerator_Win32::WriteConfiguration(
     CProjectConfiguration *pConfig) {
+  if (!pConfig->m_bIsFileConfig) {
+    const char *pTargetPlatformName =
+        g_pVPC->IsPlatformDefined("win64") ? "x64" : "Win32";
+
+    m_XMLWriter.PushNode("PropertyGroup",
+                         CFmtStr("Condition=\"'$(Configuration)|$(Platform)'=='"
+                                 "%s|%s'\" Label=\"Configuration\"",
+                                 pConfig->m_Name.Get(), pTargetPlatformName));
+
+    for (intp i = 0;
+         i < pConfig->m_PropertyStates.m_PropertiesInOutputOrder.Count(); i++) {
+      intp sortedIndex = pConfig->m_PropertyStates.m_PropertiesInOutputOrder[i];
+      if (pConfig->m_PropertyStates.m_Properties[sortedIndex]
+              .m_pToolProperty->m_bEmitAsGlobalProperty)
+        continue;
+
+      if (!WriteProperty(&pConfig->m_PropertyStates.m_Properties[sortedIndex]))
+        return false;
+    }
+
+    m_XMLWriter.PopNode(true);
+  } else {
+    for (intp i = 0;
+         i < pConfig->m_PropertyStates.m_PropertiesInOutputOrder.Count(); i++) {
+      intp sortedIndex = pConfig->m_PropertyStates.m_PropertiesInOutputOrder[i];
+      if (!WriteProperty(&pConfig->m_PropertyStates.m_Properties[sortedIndex],
+                         true, pConfig->m_Name.Get()))
+        return false;
+    }
+
+    if (!WriteTool("ClCompile", pConfig->GetCompilerTool(), pConfig))
+      return false;
+
+    if (!WriteTool("CustomBuildStep", pConfig->GetCustomBuildTool(), pConfig))
+      return false;
+  }
+
+  return true;
+}
+
+bool CProjectGenerator_Win32::WriteTools(CProjectConfiguration *pConfig) {
   const char *pTargetPlatformName =
       g_pVPC->IsPlatformDefined("win64") ? "x64" : "Win32";
 
-  if (pConfig->m_bIsFileConfig) {
-    m_XMLWriter.PushNode("FileConfiguration");
-  } else {
-    m_XMLWriter.PushNode("Configuration");
-  }
+  m_XMLWriter.PushNode(
+      "ItemDefinitionGroup",
+      CFmtStr("Condition=\"'$(Configuration)|$(Platform)'=='%s|%s'\"",
+              pConfig->m_Name.Get(), pTargetPlatformName));
 
-  const char *pOutputName = "???";
-  if (!V_stricmp(pConfig->m_Name.Get(), "debug")) {
-    pOutputName = "Debug";
-  } else if (!V_stricmp(pConfig->m_Name.Get(), "release")) {
-    pOutputName = "Release";
-  } else {
-    return false;
-  }
-
-  m_XMLWriter.Write(
-      CFmtStrMax("Name=\"%s|%s\"", pOutputName, pTargetPlatformName));
-
-  // write configuration properties
-  for (intp i = 0;
-       i < pConfig->m_PropertyStates.m_PropertiesInOutputOrder.Count(); i++) {
-    intp sortedIndex = pConfig->m_PropertyStates.m_PropertiesInOutputOrder[i];
-    WriteProperty(&pConfig->m_PropertyStates.m_Properties[sortedIndex]);
-  }
-
-  m_XMLWriter.Write(">");
-
-  if (!WriteTool("VCPreBuildEventTool", pConfig->GetPreBuildEventTool()))
+  if (!WriteTool("PreBuildEvent", pConfig->GetPreBuildEventTool(), pConfig))
     return false;
 
-  if (!WriteTool("VCCustomBuildTool", pConfig->GetCustomBuildTool()))
+  if (!WriteTool("ClCompile", pConfig->GetCompilerTool(), pConfig))
     return false;
 
-  if (!WriteNULLTool("VCXMLDataGeneratorTool", pConfig)) return false;
-
-  if (!WriteNULLTool("VCWebServiceProxyGeneratorTool", pConfig)) return false;
-
-  if (!WriteNULLTool("VCMIDLTool", pConfig)) return false;
-
-  if (!WriteTool("VCCLCompilerTool", pConfig->GetCompilerTool())) return false;
-
-  if (!WriteNULLTool("VCManagedResourceCompilerTool", pConfig)) return false;
-
-  if (!WriteTool("VCResourceCompilerTool", pConfig->GetResourcesTool()))
+  if (!WriteTool("ResourceCompile", pConfig->GetResourcesTool(), pConfig))
     return false;
 
-  if (!WriteTool("VCPreLinkEventTool", pConfig->GetPreLinkEventTool()))
+  if (!WriteTool("PreLinkEvent", pConfig->GetPreLinkEventTool(), pConfig))
     return false;
 
-  if (!WriteTool("VCLinkerTool", pConfig->GetLinkerTool())) return false;
+  if (!WriteTool("Link", pConfig->GetLinkerTool(), pConfig)) return false;
 
-  if (!WriteTool("VCLibrarianTool", pConfig->GetLibrarianTool())) return false;
+  if (!WriteTool("Lib", pConfig->GetLibrarianTool(), pConfig)) return false;
 
-  if (!WriteNULLTool("VCALinkTool", pConfig)) return false;
+  if (!WriteTool("Manifest", pConfig->GetManifestTool(), pConfig)) return false;
 
-  if (!WriteTool("VCManifestTool", pConfig->GetManifestTool())) return false;
+  if (!WriteTool("Xdcmake", pConfig->GetXMLDocGenTool(), pConfig)) return false;
 
-  if (!WriteTool("VCXDCMakeTool", pConfig->GetXMLDocGenTool())) return false;
+  if (!WriteTool("Bscmake", pConfig->GetBrowseInfoTool(), pConfig))
+    return false;
 
-  if (!WriteTool("VCBscMakeTool", pConfig->GetBrowseInfoTool())) return false;
+  if (!WriteTool("PostBuildEvent", pConfig->GetPostBuildEventTool(), pConfig))
+    return false;
 
-  if (!WriteNULLTool("VCFxCopTool", pConfig)) return false;
-
-  if (!pConfig->GetLibrarianTool()) {
-    if (!WriteNULLTool("VCAppVerifierTool", pConfig)) return false;
-
-    if (!WriteNULLTool("VCWebDeploymentTool", pConfig)) return false;
-  }
-
-  if (!WriteTool("VCPostBuildEventTool", pConfig->GetPostBuildEventTool()))
+  if (!WriteTool("CustomBuildStep", pConfig->GetCustomBuildTool(), pConfig))
     return false;
 
   m_XMLWriter.PopNode(true);
@@ -152,43 +228,67 @@ bool CProjectGenerator_Win32::WriteConfiguration(
   return true;
 }
 
-bool CProjectGenerator_Win32::WriteToXML() {
+bool CProjectGenerator_Win32::WritePrimaryXML(
+    const char *pOutputFilename) {
+  if (!m_XMLWriter.Open(pOutputFilename, true)) return false;
+
   const char *pTargetPlatformName =
       g_pVPC->IsPlatformDefined("win64") ? "x64" : "Win32";
 
-  m_XMLWriter.PushNode("VisualStudioProject");
-  m_XMLWriter.Write("ProjectType=\"Visual C++\"");
+  m_XMLWriter.PushNode(
+      "Project",
+      "DefaultTargets=\"Build\" ToolsVersion=\"4.0\" "
+      "xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\"");
 
-  if (g_pVPC->Is2008())
-    m_XMLWriter.Write("Version=\"9.00\"");
-  else
-    m_XMLWriter.Write("Version=\"8.00\"");
-
-  m_XMLWriter.Write(
-      CFmtStrMax("Name=\"%s\"", m_pVCProjGenerator->GetProjectName().Get()));
-  m_XMLWriter.Write(CFmtStrMax("ProjectGUID=\"%s\"",
-                               m_pVCProjGenerator->GetGUIDString().Get()));
-  if (g_pVPC->BUseP4SCC())
-    m_XMLWriter.Write(
-        "SccProjectName=\"Perforce "
-        "Project\"\nSccLocalPath=\"..\"\nSccProvider=\"MSSCCI:Perforce "
-        "SCM\"\n");
-  m_XMLWriter.Write(">");
-
-  m_XMLWriter.PushNode("Platforms");
-  m_XMLWriter.PushNode("Platform");
-  m_XMLWriter.Write(CFmtStrMax("Name=\"%s\"", pTargetPlatformName));
-  m_XMLWriter.PopNode(false);
-  m_XMLWriter.PopNode(true);
-
-  m_XMLWriter.PushNode("ToolFiles");
-  m_XMLWriter.PopNode(true);
-
+  m_XMLWriter.PushNode("ItemGroup", "Label=\"ProjectConfigurations\"");
   CUtlVector<CUtlString> configurationNames;
   m_pVCProjGenerator->GetAllConfigurationNames(configurationNames);
+  for (intp i = 0; i < configurationNames.Count(); i++) {
+    m_XMLWriter.PushNode(
+        "ProjectConfiguration",
+        CFmtStr("Include=\"%s|%s\"", configurationNames[i].Get(),
+                pTargetPlatformName));
+    m_XMLWriter.WriteLineNode("Configuration", "", configurationNames[i].Get());
+    m_XMLWriter.WriteLineNode("Platform", "",
+                              CFmtStr("%s", pTargetPlatformName));
+    m_XMLWriter.PopNode(true);
+  }
+  m_XMLWriter.PopNode(true);
+
+  m_XMLWriter.PushNode("PropertyGroup", "Label=\"Globals\"");
+  m_XMLWriter.WriteLineNode("ProjectName", "",
+                            m_pVCProjGenerator->GetProjectName().Get());
+  m_XMLWriter.WriteLineNode("ProjectGuid", "",
+                            m_pVCProjGenerator->GetGUIDString().Get());
+  if (g_pVPC->BUseP4SCC()) {
+    m_XMLWriter.WriteLineNode("SccProjectName", "", "Perforce Project");
+    // it looks like 2k10 (at least) doesn't hook files in the project but not
+    // under the project root into source control, so make all the projects
+    // local paths the solution dir
+    char szCurrentDirectory[MAX_PATH];
+    V_GetCurrentDirectory(szCurrentDirectory, V_ARRAYSIZE(szCurrentDirectory));
+    char szRelativeFilename[MAX_PATH];
+    if (!V_MakeRelativePath(g_pVPC->GetStartDirectory(), szCurrentDirectory,
+                            szRelativeFilename, sizeof(szRelativeFilename)))
+      V_strncpy(szRelativeFilename, ".", V_ARRAYSIZE(szRelativeFilename));
+    m_XMLWriter.WriteLineNode("SccLocalPath", "", szRelativeFilename);
+    m_XMLWriter.WriteLineNode("SccProvider", "", "MSSCCI:Perforce SCM");
+  }
+  m_XMLWriter.PopNode(true);
+
+  m_XMLWriter.Write(
+      "<Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.Default.props\" />");
+
+  // When building 64 bit, use 64 bit toolchain (there is no 64 bit toolchain
+  // for 32 bit projects). This property is written early/specially to ensure it
+  // is written prior to Microsoft.Cpp.props
+  if (g_pVPC->IsPlatformDefined("win64") && !g_pVPC->BUse32BitTools()) {
+    m_XMLWriter.PushNode("PropertyGroup");
+    m_XMLWriter.WriteLineNode("PreferredToolArchitecture", NULL, "x64");
+    m_XMLWriter.PopNode(true);
+  }
 
   // write the root configurations
-  m_XMLWriter.PushNode("Configurations");
   for (intp i = 0; i < configurationNames.Count(); i++) {
     CProjectConfiguration *pConfiguration = NULL;
     if (m_pVCProjGenerator->GetRootConfiguration(configurationNames[i].Get(),
@@ -196,86 +296,284 @@ bool CProjectGenerator_Win32::WriteToXML() {
       if (!WriteConfiguration(pConfiguration)) return false;
     }
   }
+
+  m_XMLWriter.Write(
+      "<Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.props\" />");
+  m_XMLWriter.PushNode("ImportGroup", "Label=\"ExtensionSettings\"");
+  // dimhotepus: Always add MASM props.
+  m_XMLWriter.Write(
+      "<Import Project=\"$(VCTargetsPath)\\BuildCustomizations\\masm.props\" "
+      "/>");
   m_XMLWriter.PopNode(true);
 
-  m_XMLWriter.PushNode("References");
-  m_XMLWriter.PopNode(true);
-
-  m_XMLWriter.PushNode("Files");
-
-  CProjectFolder *pRootFolder = m_pVCProjGenerator->GetRootFolder();
-
-  for (auto iIndex = pRootFolder->m_Folders.Head();
-       iIndex != pRootFolder->m_Folders.InvalidIndex();
-       iIndex = pRootFolder->m_Folders.Next(iIndex)) {
-    if (!WriteFolder(pRootFolder->m_Folders[iIndex])) return false;
+  for (intp i = 0; i < configurationNames.Count(); i++) {
+    m_XMLWriter.PushNode(
+        "ImportGroup",
+        CFmtStr("Condition=\"'$(Configuration)|$(Platform)'=='%s|%s'\" "
+                "Label=\"PropertySheets\"",
+                configurationNames[i].Get(), pTargetPlatformName));
+    m_XMLWriter.Write(
+        "<Import "
+        "Project=\"$(UserRootDir)\\Microsoft.Cpp.$(Platform).user.props\" "
+        "Condition=\"exists('$(UserRootDir)\\Microsoft.Cpp.$(Platform).user."
+        "props')\" Label=\"LocalAppDataPlatform\" />");
+    m_XMLWriter.PopNode(true);
   }
 
-  for (auto iIndex = pRootFolder->m_Files.Head();
-       iIndex != pRootFolder->m_Files.InvalidIndex();
-       iIndex = pRootFolder->m_Files.Next(iIndex)) {
-    if (!WriteFile(pRootFolder->m_Files[iIndex])) return false;
+  m_XMLWriter.Write("<PropertyGroup Label=\"UserMacros\" />");
+
+  m_XMLWriter.PushNode("PropertyGroup");
+  m_XMLWriter.WriteLineNode("_ProjectFileVersion", "", "10.0.30319.1");
+  for (intp i = 0; i < configurationNames.Count(); i++) {
+    CProjectConfiguration *pConfiguration = NULL;
+    if (m_pVCProjGenerator->GetRootConfiguration(configurationNames[i].Get(),
+                                                 &pConfiguration)) {
+      for (intp j = 0;
+           j <
+           pConfiguration->m_PropertyStates.m_PropertiesInOutputOrder.Count();
+           j++) {
+        intp sortedIndex =
+            pConfiguration->m_PropertyStates.m_PropertiesInOutputOrder[j];
+        if (!pConfiguration->m_PropertyStates.m_Properties[sortedIndex]
+                 .m_pToolProperty->m_bEmitAsGlobalProperty)
+          continue;
+
+        if (!WriteProperty(
+                &pConfiguration->m_PropertyStates.m_Properties[sortedIndex],
+                true, pConfiguration->m_Name.Get()))
+          return false;
+      }
+
+      if (!WritePropertyGroupTool(pConfiguration->GetPreBuildEventTool(),
+                                  pConfiguration))
+        return false;
+
+      if (!WritePropertyGroupTool(pConfiguration->GetPreLinkEventTool(),
+                                  pConfiguration))
+        return false;
+
+      if (!WritePropertyGroupTool(pConfiguration->GetLinkerTool(),
+                                  pConfiguration))
+        return false;
+
+      if (!WritePropertyGroupTool(pConfiguration->GetLibrarianTool(),
+                                  pConfiguration))
+        return false;
+
+      if (!WritePropertyGroupTool(pConfiguration->GetPostBuildEventTool(),
+                                  pConfiguration))
+        return false;
+    }
+  }
+  m_XMLWriter.PopNode(true);
+
+  // write the tool configurations
+  for (intp i = 0; i < configurationNames.Count(); i++) {
+    CProjectConfiguration *pConfiguration = NULL;
+    if (m_pVCProjGenerator->GetRootConfiguration(configurationNames[i].Get(),
+                                                 &pConfiguration)) {
+      if (!WriteTools(pConfiguration)) return false;
+    }
   }
 
+  // write root folders
+  for (int i = 0; i < TKN_MAX_COUNT; i++) {
+    if (!WriteFolder(m_pVCProjGenerator->GetRootFolder(), s_TypeKeyNames[i], 0))
+      return false;
+  }
+
+  m_XMLWriter.Write(
+      "<Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.targets\" />");
+  m_XMLWriter.PushNode("ImportGroup", "Label=\"ExtensionTargets\"");
+  // dimhotepus: Always include MASM targets.
+  m_XMLWriter.Write(
+      "<Import Project=\"$(VCTargetsPath)\\BuildCustomizations\\masm.targets\" "
+      "/>");
   m_XMLWriter.PopNode(true);
 
   m_XMLWriter.PopNode(true);
+
+  m_XMLWriter.Close();
 
   return true;
 }
 
-bool CProjectGenerator_Win32::Save(const char *pOutputFilename) {
-  if (!m_XMLWriter.Open(pOutputFilename)) return false;
+bool CProjectGenerator_Win32::WriteFolderToSecondaryXML(
+    CProjectFolder *pFolder, const char *pParentPath) {
+  CUtlString parentPath =
+      CUtlString(CFmtStr("%s%s%s", pParentPath, pParentPath[0] ? "\\" : "",
+                         pFolder->m_Name.Get()));
 
-  bool bValid = WriteToXML();
+  MD5Context_t ctx;
+  unsigned char digest[MD5_DIGEST_LENGTH];
+  V_memset(&ctx, 0, sizeof(ctx));
+  V_memset(digest, 0, sizeof(digest));
+  MD5Init(&ctx);
+  MD5Update(&ctx, (unsigned char *)parentPath.Get(), strlen(parentPath.Get()));
+  MD5Final(digest, &ctx);
 
-  m_XMLWriter.Close();
+  char szMD5[64];
+  V_binarytohex(digest, MD5_DIGEST_LENGTH, szMD5, sizeof(szMD5));
+  V_strupr(szMD5);
 
-  return bValid;
+  char szGUID[MAX_PATH];
+  V_snprintf(szGUID, sizeof(szGUID), "{%8.8s-%4.4s-%4.4s-%4.4s-%12.12s}", szMD5,
+             &szMD5[8], &szMD5[12], &szMD5[16], &szMD5[20]);
+
+  m_XMLFilterWriter.PushNode("Filter",
+                             CFmtStr("Include=\"%s\"", parentPath.Get()));
+  m_XMLFilterWriter.WriteLineNode("UniqueIdentifier", "", szGUID);
+  m_XMLFilterWriter.PopNode(true);
+
+  for (auto iIndex = pFolder->m_Folders.Head();
+       iIndex != pFolder->m_Folders.InvalidIndex();
+       iIndex = pFolder->m_Folders.Next(iIndex)) {
+    if (!WriteFolderToSecondaryXML(pFolder->m_Folders[iIndex],
+                                   parentPath.Get()))
+      return false;
+  }
+
+  return true;
 }
 
-bool CProjectGenerator_Win32::WriteNULLTool(
-    const char *pToolName, const CProjectConfiguration *pConfig) {
-  if (pConfig->m_bIsFileConfig) return true;
+bool CProjectGenerator_Win32::WriteFileToSecondaryXML(
+    CProjectFile *pFile, const char *pParentPath, const char *pFileTypeName) {
+  const char *pKeyName = GetKeyNameForFile(pFile);
+  if (V_stricmp(pFileTypeName, pKeyName)) {
+    // skip it
+    return true;
+  }
 
-  m_XMLWriter.PushNode("Tool");
+  if (pParentPath) {
+    m_XMLFilterWriter.PushNode(pKeyName,
+                               CFmtStr("Include=\"%s\"", pFile->m_Name.Get()));
+    m_XMLFilterWriter.WriteLineNode("Filter", "", pParentPath);
+    m_XMLFilterWriter.PopNode(true);
+  } else {
+    m_XMLFilterWriter.Write(
+        CFmtStr("<%s Include=\"%s\" />", pKeyName, pFile->m_Name.Get()));
+  }
 
-  m_XMLWriter.Write(CFmtStr("Name=\"%s\"", pToolName));
+  return true;
+}
 
-  m_XMLWriter.PopNode(false);
+bool CProjectGenerator_Win32::WriteFolderContentsToSecondaryXML(
+    CProjectFolder *pFolder, const char *pParentPath, const char *pFileTypeName,
+    int nDepth) {
+  CUtlString parentPath;
+  if (pParentPath) {
+    parentPath = CFmtStr("%s%s%s", pParentPath, pParentPath[0] ? "\\" : "",
+                         pFolder->m_Name.Get());
+  }
+
+  if (!nDepth) {
+    m_XMLFilterWriter.PushNode("ItemGroup", NULL);
+  }
+
+  for (auto iIndex = pFolder->m_Files.Head();
+       iIndex != pFolder->m_Files.InvalidIndex();
+       iIndex = pFolder->m_Files.Next(iIndex)) {
+    if (!WriteFileToSecondaryXML(pFolder->m_Files[iIndex], parentPath.Get(),
+                                 pFileTypeName))
+      return false;
+  }
+
+  for (auto iIndex = pFolder->m_Folders.Head();
+       iIndex != pFolder->m_Folders.InvalidIndex();
+       iIndex = pFolder->m_Folders.Next(iIndex)) {
+    if (!WriteFolderContentsToSecondaryXML(pFolder->m_Folders[iIndex],
+                                           parentPath.Get(), pFileTypeName,
+                                           nDepth + 1))
+      return false;
+  }
+
+  if (!nDepth) {
+    m_XMLFilterWriter.PopNode(true);
+  }
+
+  return true;
+}
+
+bool CProjectGenerator_Win32::WriteSecondaryXML(
+    const char *pOutputFilename) {
+  if (!m_XMLFilterWriter.Open(pOutputFilename, true)) return false;
+
+  m_XMLFilterWriter.PushNode(
+      "Project",
+      "ToolsVersion=\"4.0\" "
+      "xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\"");
+
+  // write the root folders
+  m_XMLFilterWriter.PushNode("ItemGroup", NULL);
+  CProjectFolder *pRootFolder = m_pVCProjGenerator->GetRootFolder();
+  for (auto iIndex = pRootFolder->m_Folders.Head();
+       iIndex != pRootFolder->m_Folders.InvalidIndex();
+       iIndex = pRootFolder->m_Folders.Next(iIndex)) {
+    if (!WriteFolderToSecondaryXML(pRootFolder->m_Folders[iIndex], ""))
+      return false;
+  }
+  m_XMLFilterWriter.PopNode(true);
+
+  // write folder contents
+  for (int i = 0; i < TKN_MAX_COUNT; i++) {
+    if (!WriteFolderContentsToSecondaryXML(pRootFolder, NULL, s_TypeKeyNames[i],
+                                           0))
+      return false;
+  }
+
+  m_XMLFilterWriter.PopNode(true);
+
+  m_XMLFilterWriter.Close();
 
   return true;
 }
 
 bool CProjectGenerator_Win32::WriteTool(const char *pToolName,
-                                        const CProjectTool *pProjectTool) {
+                                             const CProjectTool *pProjectTool,
+                                             CProjectConfiguration *pConfig) {
   if (!pProjectTool) {
     // not an error, some tools n/a for a config
     return true;
   }
 
-  m_XMLWriter.PushNode("Tool");
-
-  m_XMLWriter.Write(CFmtStr("Name=\"%s\"", pToolName));
+  if (!pConfig->m_bIsFileConfig) {
+    m_XMLWriter.PushNode(pToolName, NULL);
+  }
 
   for (intp i = 0;
        i < pProjectTool->m_PropertyStates.m_PropertiesInOutputOrder.Count();
        i++) {
     intp sortedIndex =
         pProjectTool->m_PropertyStates.m_PropertiesInOutputOrder[i];
-    WriteProperty(&pProjectTool->m_PropertyStates.m_Properties[sortedIndex]);
+    if (!pConfig->m_bIsFileConfig) {
+      if (pProjectTool->m_PropertyStates.m_Properties[sortedIndex]
+              .m_pToolProperty->m_bEmitAsGlobalProperty)
+        continue;
+
+      if (!WriteProperty(
+              &pProjectTool->m_PropertyStates.m_Properties[sortedIndex]))
+        return false;
+    } else {
+      if (!WriteProperty(
+              &pProjectTool->m_PropertyStates.m_Properties[sortedIndex], true,
+              pConfig->m_Name.Get()))
+        return false;
+    }
   }
 
-  m_XMLWriter.PopNode(false);
+  if (!pConfig->m_bIsFileConfig) {
+    m_XMLWriter.PopNode(true);
+  }
 
   return true;
 }
 
 bool CProjectGenerator_Win32::WriteProperty(
-    const PropertyState_t *pPropertyState, const char *pOutputName,
+    const PropertyState_t *pPropertyState, bool bEmitConfiguration,
+    const char *pConfigName, const char *pOutputName,
     const char *pOutputValue) {
   if (!pPropertyState) {
-    m_XMLWriter.Write(CFmtStrMax("%s=\"%s\"", pOutputName, pOutputValue));
+    m_XMLWriter.WriteLineNode(pOutputName, "", pOutputValue);
     return true;
   }
 
@@ -289,28 +587,38 @@ bool CProjectGenerator_Win32::WriteProperty(
     }
   }
 
+  const char *pCondition = "";
+  CUtlString conditionString;
+  if (bEmitConfiguration) {
+    const char *pTargetPlatformName =
+        g_pVPC->IsPlatformDefined("win64") ? "x64" : "Win32";
+
+    conditionString =
+        CFmtStr(" Condition=\"'$(Configuration)|$(Platform)'=='%s|%s'\"",
+                pConfigName, pTargetPlatformName);
+    pCondition = conditionString.Get();
+  }
+
   switch (pPropertyState->m_pToolProperty->m_nType) {
     case PT_BOOLEAN: {
       bool bEnabled = Sys_StringToBool(pPropertyState->m_StringValue.Get());
       if (pPropertyState->m_pToolProperty->m_bInvertOutput) {
         bEnabled ^= 1;
       }
-      m_XMLWriter.Write(
-          CFmtStrMax("%s=\"%s\"", pOutputName, bEnabled ? "true" : "false"));
+      m_XMLWriter.WriteLineNode(pOutputName, pCondition,
+                                bEnabled ? "true" : "false");
     } break;
 
-    case PT_STRING: {
-      // String() returns temporary object, so save in var to prevent stale
-      // memory usage.
-      CUtlString s =
-          m_XMLWriter.FixupXMLString(pPropertyState->m_StringValue.Get());
-      m_XMLWriter.Write(CFmtStrMax("%s=\"%s\"", pOutputName, s.String()));
-    } break;
+    case PT_STRING:
+      m_XMLWriter.WriteLineNode(
+          pOutputName, pCondition,
+          m_XMLWriter.FixupXMLString(pPropertyState->m_StringValue.Get()));
+      break;
 
     case PT_LIST:
     case PT_INTEGER:
-      m_XMLWriter.Write(CFmtStrMax("%s=\"%s\"", pOutputName,
-                                   pPropertyState->m_StringValue.Get()));
+      m_XMLWriter.WriteLineNode(pOutputName, pCondition,
+                                pPropertyState->m_StringValue.Get());
       break;
 
     case PT_IGNORE:
@@ -323,4 +631,17 @@ bool CProjectGenerator_Win32::WriteProperty(
   }
 
   return true;
+}
+
+bool CProjectGenerator_Win32::Save(const char *pOutputFilename) {
+  bool bValid = WritePrimaryXML(pOutputFilename);
+  if (bValid) {
+    bValid = WriteSecondaryXML(CFmtStr("%s.filters", pOutputFilename));
+    if (!bValid) {
+      g_pVPC->VPCError("Cannot save to the specified project '%s'",
+                       pOutputFilename);
+    }
+  }
+
+  return bValid;
 }

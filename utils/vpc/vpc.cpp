@@ -753,12 +753,6 @@ void CVPC::SpewUsage(void) {
               "[/2010]:       Generate projects and solutions for Visual "
               "Studio 2010\n");
       Log_Msg(LOG_VPC,
-              "[/2005]:       Generate projects and solutions for Visual "
-              "Studio 2005\n");
-      Log_Msg(LOG_VPC,
-              "[/2008]:       Generate projects and solutions for Visual "
-              "Studio 2008\n");
-      Log_Msg(LOG_VPC,
               "[/windows]:    Generate projects for both Win32 and Win64\n");
       Log_Msg(LOG_VPC, "[/unity]:      Enable unity file generation\n");
       Log_Msg(LOG_VPC,
@@ -1050,12 +1044,6 @@ void CVPC::HandleSingleCommandLineArg(const char *pArg) {
       m_bShowDeps = true;
     } else if (!V_stricmp(pArgName, "nop4add")) {
       m_bP4AutoAdd = false;
-    } else if (!V_stricmp(pArgName, "2005")) {
-      m_eVSVersion = k_EVSVersion_2005;
-      m_ExtraOptionsCRCString += pArgName;
-    } else if (!V_stricmp(pArgName, "2008")) {
-      m_eVSVersion = k_EVSVersion_2008;
-      m_ExtraOptionsCRCString += pArgName;
     } else if (!V_stricmp(pArgName, "2010")) {
       m_eVSVersion = k_EVSVersion_2010;
       m_ExtraOptionsCRCString += pArgName;
@@ -1869,16 +1857,7 @@ void CVPC::SetMacrosAndConditionals() {
         m_bUseVS2010FileFormat = true;
         break;
 
-      case k_EVSVersion_2008:
-        m_ExtraOptionsCRCString += "VS2008";
-        SetConditional("VS2005", true);  // use 2005 defines
-        m_bUseVS2010FileFormat = false;
-        break;
-
       default:
-        m_ExtraOptionsCRCString += "VS2005";
-        SetConditional("VS2005", true);
-        m_bUseVS2010FileFormat = false;
         break;
     }
   }
@@ -2243,7 +2222,6 @@ void CVPC::HandleMKSLN(IBaseSolutionGenerator *solution_generator) {
 void CVPC::SetupGenerators() {
   extern IBaseSolutionGenerator *GetSolutionGenerator_Win32();
   extern IBaseProjectGenerator *GetWin32ProjectGenerator();
-  extern IBaseProjectGenerator *GetWin32ProjectGenerator_2010();
   extern IBaseProjectGenerator *GetMakefileProjectGenerator();
   extern IBaseSolutionGenerator *GetMakefileSolutionGenerator();
   extern IBaseProjectGenerator *GetXcodeProjectGenerator();
@@ -2276,7 +2254,7 @@ void CVPC::SetupGenerators() {
     m_bForceIterate = true;
   } else {
     // spew what we are generating
-    const char *pchLogLine = "Generating for Visual Studio 2005.\n";
+    const char *pchLogLine = "Generating for Visual Studio 2010.\n";
     if (m_eVSVersion == k_EVSVersion_2026)
       pchLogLine = "Generating for Visual Studio 2026.\n";
     else if (m_eVSVersion == k_EVSVersion_2022)
@@ -2287,16 +2265,10 @@ void CVPC::SetupGenerators() {
       pchLogLine = "Generating for Visual Studio 2013.\n";
     else if (m_eVSVersion == k_EVSVersion_2012)
       pchLogLine = "Generating for Visual Studio 2012.\n";
-    else if (m_eVSVersion == k_EVSVersion_2010)
-      pchLogLine = "Generating for Visual Studio 2010.\n";
 
     Log_Msg(LOG_VPC, Color(0, 255, 255, 255), pchLogLine);
 
-    // pick a project generator
-    if (m_bUseVS2010FileFormat)
-      m_pProjectGenerator = GetWin32ProjectGenerator_2010();
-    else
-      m_pProjectGenerator = GetWin32ProjectGenerator();
+    m_pProjectGenerator = GetWin32ProjectGenerator();
 
     m_pSolutionGenerator = GetSolutionGenerator_Win32();
   }

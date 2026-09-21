@@ -858,13 +858,7 @@ void CVCProjGenerator::SetupGeneratorDefinition(
   m_pGeneratorDefinition->LoadDefinition(pDefinitionName, pPropertyNames);
 }
 
-const char *CVCProjGenerator::GetProjectFileExtension() {
-  // VS2010+ uses vcxproj
-  if (g_pVPC->Is2010PlusFileFormat()) {
-    return "vcxproj";
-  }
-  return "vcproj";
-}
+const char *CVCProjGenerator::GetProjectFileExtension() { return "vcxproj"; }
 
 void CVCProjGenerator::StartProject() {
   if (!m_pGeneratorDefinition) {

@@ -108,27 +108,15 @@ class IBaseSolutionWriter_Win32 {
       if (nResult == -1)
         vpc->VPCError("Can't open %s to get ProjectGUID.", pFilename);
 
-      const char *pSearchFor;
-      if (vpc->Is2010PlusFileFormat()) {
-        pSearchFor = "<ProjectGuid>{";
-      } else {
-        pSearchFor = "ProjectGUID=\"{";
-      }
-
-      const char *pPos = FindInFile(vpc, pFilename, pFileData, pSearchFor);
+      const char *pPos =
+          FindInFile(vpc, pFilename, pFileData, "<ProjectGuid>{");
       char szGuid[37];
       const char *pGuid = pPos;
       V_strncpy(szGuid, pGuid, sizeof(szGuid));
       vcprojInfo.m_ProjectGUID = szGuid;
 
-      const char *pEnd;
-      if (vpc->Is2010PlusFileFormat()) {
-        pPos = FindInFile(vpc, pFilename, pFileData, "<ProjectName>");
-        pEnd = V_stristr(pPos, "<");
-      } else {
-        pPos = FindInFile(vpc, pFilename, pFileData, "Name=\"");
-        pEnd = V_stristr(pPos, "\"");
-      }
+      pPos = FindInFile(vpc, pFilename, pFileData, "<ProjectName>");
+      const char *pEnd = V_stristr(pPos, "<");
 
       if (!pEnd || (pEnd - pPos) > 1024 || (pEnd - pPos) <= 0)
         vpc->VPCError("Can't find valid 'Name=' in %s.", pFilename);
@@ -187,21 +175,11 @@ class CSlnSolutionWriter_Win32 : public IBaseSolutionWriter_Win32 {
               "\xef\xbb\xbf\nMicrosoft Visual Studio Solution File, Format "
               "Version 12.00\n");
       fprintf(m_fp, "# Visual Studio 2012\n");
-    } else if (m_vpc->Is2010()) {
+    } else {
       fprintf(m_fp,
               "\xef\xbb\xbf\nMicrosoft Visual Studio Solution File, Format "
               "Version 11.00\n");
       fprintf(m_fp, "# Visual Studio 2010\n");
-    } else if (m_vpc->Is2008()) {
-      fprintf(m_fp,
-              "\xef\xbb\xbf\nMicrosoft Visual Studio Solution File, Format "
-              "Version 10.00\n");
-      fprintf(m_fp, "# Visual Studio 2008\n");
-    } else {
-      fprintf(m_fp,
-              "\xef\xbb\xbf\nMicrosoft Visual Studio Solution File, Format "
-              "Version 9.00\n");
-      fprintf(m_fp, "# Visual Studio 2005\n");
     }
 
     fprintf(m_fp, "#\n");
@@ -400,27 +378,6 @@ class CSlnSolutionWriter_Win32 : public IBaseSolutionWriter_Win32 {
   void WriteGlobalSolutionData(const CUtlVector<CVCProjInfo> &vcprojInfos) {
     fprintf(m_fp, "Global\n");
 
-    if (m_folders.Count()) {
-      fprintf(m_fp, "\tGlobalSection(NestedProjects) = preSolution\n");
-
-      for (intp i = 0; i < m_projectFolders.Count(); i++) {
-        if (m_projectFolders[i].IsEmpty()) continue;
-
-        fprintf(m_fp, "\t\t{%s} = %s\n", vcprojInfos[i].m_ProjectGUID.Get(),
-                GetFolderGuid(m_projectFolders[i].Get()).Get());
-      }
-
-      for (const CUtlString &folder : m_folders) {
-        CUtlString parent = GetParentFolder(folder.Get());
-        if (parent.IsEmpty()) continue;
-
-        fprintf(m_fp, "\t\t%s = %s\n", GetFolderGuid(folder.Get()).Get(),
-                GetFolderGuid(parent.Get()).Get());
-      }
-
-      fprintf(m_fp, "\tEndGlobalSection\n");
-    }
-
     {
       // Write solution configuration platforms
       fprintf(
@@ -443,6 +400,27 @@ class CSlnSolutionWriter_Win32 : public IBaseSolutionWriter_Win32 {
       // Do not hide solution node
       fprintf(m_fp, "\tGlobalSection(SolutionProperties) = preSolution\n");
       fprintf(m_fp, "\t\tHideSolutionNode = FALSE\n");
+      fprintf(m_fp, "\tEndGlobalSection\n");
+    }
+
+    if (m_folders.Count()) {
+      fprintf(m_fp, "\tGlobalSection(NestedProjects) = preSolution\n");
+
+      for (intp i = 0; i < m_projectFolders.Count(); i++) {
+        if (m_projectFolders[i].IsEmpty()) continue;
+
+        fprintf(m_fp, "\t\t{%s} = %s\n", vcprojInfos[i].m_ProjectGUID.Get(),
+                GetFolderGuid(m_projectFolders[i].Get()).Get());
+      }
+
+      for (const CUtlString &folder : m_folders) {
+        CUtlString parent = GetParentFolder(folder.Get());
+        if (parent.IsEmpty()) continue;
+
+        fprintf(m_fp, "\t\t%s = %s\n", GetFolderGuid(folder.Get()).Get(),
+                GetFolderGuid(parent.Get()).Get());
+      }
+
       fprintf(m_fp, "\tEndGlobalSection\n");
     }
 
@@ -502,17 +480,9 @@ class CSlnSolutionWriter_Win32 : public IBaseSolutionWriter_Win32 {
       return;
     }
 
-    int firstVer;
-    const int lastVer = 14;  // Handle up to VS 14, AKA VS 2015
-
-    // VS2010+ uses 10 as first version.
-    if (m_vpc->Is2010PlusFileFormat()) {
-      firstVer = 10;
-    } else if (m_vpc->Is2008()) {
-      firstVer = 9;
-    } else {
-      firstVer = 8;
-    }
+    // VS2010 is the first supported version, VS 14 is VS 2015.
+    const int firstVer = 10;
+    const int lastVer = 14;
 
     for (int vsVer = firstVer; vsVer <= lastVer; ++vsVer) {
       // Handle both VisualStudio and VCExpress (used by some SourceSDK

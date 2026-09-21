@@ -556,10 +556,8 @@ if (SE_VPC_OS_WIN)
       tier0/platform.cpp
 
       utils/vpc/projectgenerator_win32.cpp
-      utils/vpc/projectgenerator_win32_2010.cpp
       utils/vpc/solutiongenerator_win32.cpp
       utils/vpc/projectgenerator_win32.h
-      utils/vpc/projectgenerator_win32_2010.h
   )
 endif (SE_VPC_OS_WIN)
 
