@@ -383,11 +383,50 @@ intp CVPC::GetProjectsInGroup(CUtlVector<projectIndex_t> &projectList,
 }
 
 //-----------------------------------------------------------------------------
+// Returns the value of /scriptsdir, or nullptr if not specified
+//-----------------------------------------------------------------------------
+static const char *FindScriptsDirArg( int argc, const char *argv[] )
+{
+  for ( int i = 1; i < argc; i++ )
+  {
+    if ( !V_stricmp( argv[ i ], "/scriptsdir" ) && ( i + 1 ) < argc )
+    {
+      return argv[ i + 1 ];
+    }
+  }
+
+  return nullptr;
+}
+
+static bool IsRunningFromDevtoolsBin()
+{
+  char exe_path[ MAX_PATH ];
+
+  if ( !Sys_GetExecutablePath( exe_path, sizeof( exe_path ) ) )
+  {
+    return false;
+  }
+
+  V_FixSlashes( exe_path, '\\' );
+  V_strlower( exe_path );
+  
+  return ( V_stristr( exe_path, "\\devtools\\bin\\" ) != nullptr );
+}
+
+//-----------------------------------------------------------------------------
 // Checks to ensure the bin path is in the same tree as the mpc_scripts
 // Returns true if bin path valid
 //-----------------------------------------------------------------------------
-#if !defined(POSIX)
-bool CVPC::CheckBinPath(char *pOutBinPath, int outBinPathSize) {
+#if !defined( POSIX )
+bool CVPC::CheckBinPath( char *pOutBinPath, int outBinPathSize )
+{
+  // outside devtools/bin the scripts are located via /scriptsdir, nothing to
+  // compare against
+  if ( FindScriptsDirArg( m_nArgc, m_ppArgv ) || !IsRunningFromDevtoolsBin() )
+  {
+    return true;
+  }
+
   char szScriptPath[MAX_PATH];
   char szDirectory[MAX_PATH];
   char szLastDirectory[MAX_PATH];
@@ -456,11 +495,6 @@ bool CVPC::CheckBinPath(char *pOutBinPath, int outBinPathSize) {
     if (bSame) {
       return true;
     }
-  } else {
-    VPCError(
-        "Executable not running from 'devtools/bin' but from unexpected "
-        "directory '%s'",
-        szModuleBinPath);
   }
 
   // mismatched, wierd bin patch could have been a result of user's environment
@@ -492,9 +526,42 @@ bool CVPC::CheckBinPath(char *pOutBinPath, int outBinPathSize) {
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
-void CVPC::DetermineSourcePath() {
-  char source_path[MAX_PATH];
-  char last_directory[MAX_PATH];
+void CVPC::DetermineSourcePath()
+{
+  char source_path[ MAX_PATH ];
+  char last_directory[ MAX_PATH ];
+
+  if ( const char *scripts_dir = FindScriptsDirArg( m_nArgc, m_ppArgv ) )
+  {
+    char abs_dir[ MAX_PATH ];
+  
+    V_MakeAbsolutePath( abs_dir, sizeof( abs_dir ), scripts_dir );
+    V_StripTrailingSlash( abs_dir );
+
+    struct _stat statBuf;
+    if ( _stat( abs_dir, &statBuf ) == -1 )
+    {
+      VPCError( "/scriptsdir '%s' does not exist.", abs_dir );
+    }
+
+    // source path is the parent of mpc_scripts
+    V_ExtractFilePath( abs_dir, source_path, sizeof( source_path ) );
+    V_StripTrailingSlash( source_path );
+
+    m_SourcePath = source_path;
+    
+    Log_Msg( LOG_VPC, "Source Path: %s\n", m_SourcePath.Get() );
+
+    return;
+  }
+
+  if ( !IsRunningFromDevtoolsBin() )
+  {
+    VPCError(
+        "Executable is not in 'devtools/bin', expecting '/scriptsdir <path to "
+        "mpc_scripts>'."
+    );
+  }
 
   char old_path[MAX_PATH];
   V_GetCurrentDirectory(old_path, sizeof(old_path));
@@ -1166,7 +1233,18 @@ void CVPC::ParseBuildOptions(int argc, const char *argv[]) {
         // Add the restricted group name
         m_P4GroupRestrictions.AddToTail(groupName);
       }
-    } else if (!V_stricmp(pArg, "/slnitems")) {
+    }
+    else if ( !V_stricmp( pArg, "/scriptsdir" ) )
+    {
+      // value is consumed in DetermineSourcePath
+      if (( i + 1) >= argc )
+      {
+        VPCError( "/scriptsdir requires a path to the mpc_scripts directory." );
+      }
+
+      ++i;
+    }
+    else if (!V_stricmp(pArg, "/slnitems")) {
       // Get the solution items filename
       ++i;
       if (i >= argc || argv[i][0] == '+' || argv[i][0] == '-' ||
