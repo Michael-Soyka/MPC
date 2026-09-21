@@ -106,6 +106,9 @@ using projectIndex_t = intp;
 struct project_t {
   CUtlString name;
   CUtlVector<script_t> scripts;
+
+  // Solution folder path from $Folder blocks, e.g. "libs" or "a/b".
+  CUtlString folder;
 };
 
 using groupIndex_t = intp;
@@ -219,6 +222,14 @@ class CVPC {
 
   const char *GetStartDirectory() { return m_StartDirectory.Get(); }
   const char *GetSourcePath() { return m_SourcePath.Get(); }
+  const char *GetProjectFolder(const char *pProjectName) {
+    for (const project_t &project : m_Projects) {
+      if (!V_stricmp(project.name.Get(), pProjectName)) {
+        return project.folder.Get();
+      }
+    }
+    return "";
+  }
   const char *GetScriptsDirName()
   {
     return ( m_ScriptsDirName.IsEmpty() ? "mpc_scripts" : m_ScriptsDirName.Get() );

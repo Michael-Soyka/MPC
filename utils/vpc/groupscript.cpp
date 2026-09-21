@@ -95,6 +95,64 @@ void VPC_GroupKeyword_Games()
 }
 
 //-----------------------------------------------------------------------------
+//	VPC_ParseGroupBody
+//	Parses projects and nested $Folder blocks up to the closing brace.
+//-----------------------------------------------------------------------------
+static void VPC_ParseGroupBody( groupIndex_t groupIndex, const char *pFolder )
+{
+	while ( 1 )
+	{
+		const char *pToken = g_pVPC->GetScript().GetToken( true );
+		if ( !pToken || !pToken[0] )
+			g_pVPC->VPCSyntaxError();
+
+		if ( !V_stricmp( pToken, "}" ) )
+		{
+			// end of section
+			break;
+		}
+
+		if ( !V_stricmp( pToken, "$folder" ) )
+		{
+			pToken = g_pVPC->GetScript().GetToken( false );
+			if ( !pToken || !pToken[0] )
+				g_pVPC->VPCSyntaxError();
+
+			CUtlString subFolder = pFolder[0] ? CUtlString( CFmtStr( "%s/%s", pFolder, pToken ) ) : CUtlString( pToken );
+
+			pToken = g_pVPC->GetScript().GetToken( true );
+			if ( !pToken || !pToken[0] || V_stricmp( pToken, "{" ) )
+				g_pVPC->VPCSyntaxError();
+
+			VPC_ParseGroupBody( groupIndex, subFolder.Get() );
+			continue;
+		}
+
+		projectIndex_t projectIndex = VPC_Group_FindOrCreateProject( pToken, false );
+		if ( projectIndex == INVALID_INDEX )
+		{
+			g_pVPC->VPCWarning( "No Project %s defined, ignoring.", pToken );
+			continue;
+		}
+
+		g_pVPC->m_Groups[groupIndex].projects.AddToTail( projectIndex );
+
+		if ( pFolder[0] )
+		{
+			CUtlString &projectFolder = g_pVPC->m_Projects[projectIndex].folder;
+			if ( projectFolder.IsEmpty() )
+			{
+				projectFolder = pFolder;
+			}
+			else if ( V_stricmp( projectFolder.Get(), pFolder ) )
+			{
+				g_pVPC->VPCWarning( "Project %s already in folder %s, ignoring folder %s.", pToken, projectFolder.Get(), pFolder );
+			}
+		}
+	}
+}
+
+//-----------------------------------------------------------------------------
 //	VPC_GroupKeyword_Group
 //
 //-----------------------------------------------------------------------------
@@ -103,7 +161,6 @@ void VPC_GroupKeyword_Group()
 	const char			*pToken;
 	bool			bFirstToken = true;
 	groupIndex_t	groupIndex;
-	projectIndex_t	projectIndex;
 
 	groupIndex = VPC_Group_CreateGroup();
 
@@ -133,32 +190,7 @@ void VPC_GroupKeyword_Group()
 	if ( !pToken || !pToken[0] || V_stricmp( pToken, "{" ) )
 		g_pVPC->VPCSyntaxError();
 
-	while ( 1 )
-	{
-		pToken = g_pVPC->GetScript().GetToken( true );
-		if ( !pToken || !pToken[0] )
-			g_pVPC->VPCSyntaxError();
-
-		if ( !V_stricmp( pToken, "}" ) )
-		{
-			// end of section
-			break;
-		}
-		else
-		{
-			projectIndex = VPC_Group_FindOrCreateProject( pToken, false );
-			if ( projectIndex != INVALID_INDEX )
-			{
-				intp index = g_pVPC->m_Groups[groupIndex].projects.AddToTail();
-				g_pVPC->m_Groups[groupIndex].projects[index] = projectIndex;
-			}
-			else
-			{
-				g_pVPC->VPCWarning( "No Project %s defined, ignoring.", pToken );
-				continue;
-			}
-		}
-	}
+	VPC_ParseGroupBody( groupIndex, "" );
 }
 
 //-----------------------------------------------------------------------------

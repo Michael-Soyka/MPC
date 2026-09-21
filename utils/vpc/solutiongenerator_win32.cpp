@@ -43,6 +43,47 @@ class IBaseSolutionWriter_Win32 {
     }
   }
 
+  // Collects every solution folder path used by projects, ancestors included.
+  static void CollectFolders(CVPC *vpc,
+                             CUtlVector<CDependency_Project *> &projects,
+                             CUtlVector<CUtlString> &folders) {
+    for (CDependency_Project *pProject : projects) {
+      const char *pPath = vpc->GetProjectFolder(pProject->m_ProjectName.Get());
+      const intp len = V_strlen(pPath);
+
+      for (intp i = 1; i <= len; i++) {
+        if (pPath[i] != '/' && pPath[i] != '\0') continue;
+
+        CUtlString prefix = CUtlString(pPath).Slice(0, i);
+
+        bool bKnown = false;
+        for (const CUtlString &folder : folders) {
+          if (!V_stricmp(folder.Get(), prefix.Get())) {
+            bKnown = true;
+            break;
+          }
+        }
+
+        if (!bKnown) folders.AddToTail(prefix);
+      }
+    }
+  }
+
+  static const char *GetFolderLeafName(const char *pPath) {
+    const char *pSlash = strrchr(pPath, '/');
+    return pSlash ? pSlash + 1 : pPath;
+  }
+
+  // Parent folder path, empty for a top level folder.
+  static CUtlString GetParentFolder(const char *pPath) {
+    const char *pSlash = strrchr(pPath, '/');
+    return pSlash ? CUtlString(pPath).Slice(0, pSlash - pPath) : CUtlString();
+  }
+
+  static CUtlString GetFolderGuid(const char *pPath) {
+    return Sys_GuidFromFileName(CFmtStr("solution folder:%s", pPath));
+  }
+
   static const char *FindInFile(CVPC *vpc, const char *pFilename,
                                 const char *pFileData, const char *pSearchFor) {
     const char *pPos = V_stristr(pFileData, pSearchFor);
@@ -225,6 +266,19 @@ class CSlnSolutionWriter_Win32 : public IBaseSolutionWriter_Win32 {
       if (bHasDependencies) fprintf(m_fp, "\tEndProjectSection\n");
 
       fprintf(m_fp, "EndProject\n");
+
+      m_projectFolders.AddToTail(
+          CUtlString(m_vpc->GetProjectFolder(pCurProject->m_ProjectName.Get())));
+    }
+
+    CollectFolders(m_vpc, projects, m_folders);
+    for (const CUtlString &folder : m_folders) {
+      const char *pLeaf = GetFolderLeafName(folder.Get());
+      fprintf(m_fp,
+              "Project(\"{2150E333-8FDC-42A3-9474-1A3956D46DE8}\") = "
+              "\"%s\", \"%s\", \"%s\"\n",
+              pLeaf, pLeaf, GetFolderGuid(folder.Get()).Get());
+      fprintf(m_fp, "EndProject\n");
     }
 
     if (!m_vpc->Is2010()) {
@@ -253,6 +307,10 @@ class CSlnSolutionWriter_Win32 : public IBaseSolutionWriter_Win32 {
   const char *m_fileName;
   FILE *m_fp;
   CVPC *m_vpc;
+
+  // All solution folder paths, and folder path of each written project.
+  CUtlVector<CUtlString> m_folders;
+  CUtlVector<CUtlString> m_projectFolders;
 
   // Parse g_SolutionItemsFilename, reading in filenames (including wildcards),
   // and add them to the Solution Items project we're already writing.
@@ -341,6 +399,27 @@ class CSlnSolutionWriter_Win32 : public IBaseSolutionWriter_Win32 {
 
   void WriteGlobalSolutionData(const CUtlVector<CVCProjInfo> &vcprojInfos) {
     fprintf(m_fp, "Global\n");
+
+    if (m_folders.Count()) {
+      fprintf(m_fp, "\tGlobalSection(NestedProjects) = preSolution\n");
+
+      for (intp i = 0; i < m_projectFolders.Count(); i++) {
+        if (m_projectFolders[i].IsEmpty()) continue;
+
+        fprintf(m_fp, "\t\t{%s} = %s\n", vcprojInfos[i].m_ProjectGUID.Get(),
+                GetFolderGuid(m_projectFolders[i].Get()).Get());
+      }
+
+      for (const CUtlString &folder : m_folders) {
+        CUtlString parent = GetParentFolder(folder.Get());
+        if (parent.IsEmpty()) continue;
+
+        fprintf(m_fp, "\t\t%s = %s\n", GetFolderGuid(folder.Get()).Get(),
+                GetFolderGuid(parent.Get()).Get());
+      }
+
+      fprintf(m_fp, "\tEndGlobalSection\n");
+    }
 
     {
       // Write solution configuration platforms
@@ -527,20 +606,15 @@ class CSlnxSolutionWriter_Win32 : public IBaseSolutionWriter_Win32 {
     CUtlVector<CVCProjInfo> vcprojInfos;
     GetProjectInfos(m_vpc, projects, vcprojInfos);
 
-    for (intp i = 0; i < projects.Count(); i++) {
-      CDependency_Project *pCurProject = projects[i];
+    // top level projects first, then solution folders
+    WriteFolderProjects(projects, "");
 
-      // Get a relative filename for the vcproj file.
-      const char *pFullProjectFilename =
-          pCurProject->m_ProjectFilename.String();
-      char szRelativeFilename[MAX_PATH];
-      if (!V_MakeRelativePath(pFullProjectFilename, m_vpc->GetSourcePath(),
-                              szRelativeFilename, sizeof(szRelativeFilename)))
-        m_vpc->VPCError(
-            "Can't make a relative path (to the base source directory) for %s.",
-            pFullProjectFilename);
-
-      fprintf(m_fp, "  <Project Path=\"%s\" />\n", szRelativeFilename );
+    CUtlVector<CUtlString> folders;
+    CollectFolders(m_vpc, projects, folders);
+    for (const CUtlString &folder : folders) {
+      fprintf(m_fp, "  <Folder Name=\"/%s/\">\n", folder.Get());
+      WriteFolderProjects(projects, folder.Get());
+      fprintf(m_fp, "  </Folder>\n");
     }
 
     if (!m_vpc->Is2010()) {
@@ -570,6 +644,30 @@ class CSlnxSolutionWriter_Win32 : public IBaseSolutionWriter_Win32 {
  private:
   FILE *m_fp;
   CVPC *m_vpc;
+
+  // Writes projects whose solution folder equals pFolder ("" is top level).
+  void WriteFolderProjects(CUtlVector<CDependency_Project *> &projects,
+                           const char *pFolder) {
+    const char *pIndent = pFolder[0] ? "    " : "  ";
+
+    for (CDependency_Project *pCurProject : projects) {
+      if (V_stricmp(m_vpc->GetProjectFolder(pCurProject->m_ProjectName.Get()),
+                    pFolder))
+        continue;
+
+      // Get a relative filename for the vcproj file.
+      const char *pFullProjectFilename =
+          pCurProject->m_ProjectFilename.String();
+      char szRelativeFilename[MAX_PATH];
+      if (!V_MakeRelativePath(pFullProjectFilename, m_vpc->GetSourcePath(),
+                              szRelativeFilename, sizeof(szRelativeFilename)))
+        m_vpc->VPCError(
+            "Can't make a relative path (to the base source directory) for %s.",
+            pFullProjectFilename);
+
+      fprintf(m_fp, "%s<Project Path=\"%s\" />\n", pIndent, szRelativeFilename);
+    }
+  }
 
   // Parse g_SolutionItemsFilename, reading in filenames (including wildcards),
   // and add them to the Solution Items project we're already writing.
