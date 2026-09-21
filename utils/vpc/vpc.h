@@ -218,13 +218,14 @@ class CVPC {
 
   const char *GetStartDirectory() { return m_StartDirectory.Get(); }
   const char *GetSourcePath() { return m_SourcePath.Get(); }
-  const char *GetProjectFolder(const char *pProjectName) {
-    for (const project_t &project : m_Projects) {
-      if (!V_stricmp(project.name.Get(), pProjectName)) {
-        return project.folder.Get();
-      }
+  const char *GetProjectFolder(projectIndex_t iProject)
+  {
+    if ( !m_Projects.IsValidIndex( iProject ) )
+    {
+      return "";
     }
-    return "";
+
+    return m_Projects[iProject].folder.Get();
   }
   const char *GetScriptsDirName()
   {

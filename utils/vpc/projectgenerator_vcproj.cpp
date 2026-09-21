@@ -887,6 +887,136 @@ void CVCProjGenerator::StartProject() {
   SetGUID(m_OutputFilename.Get());
 }
 
+static const char *g_pOption_AdditionalDependencies      = "$AdditionalDependencies";
+static const char *g_pOption_AdditionalDependencies_Proj = "$AdditionalDependencies_Proj";
+static const char *g_pOption_CommandLine = "$CommandLine";
+
+static void AddFilesToDependenciesProperty(
+    const char *pFileList, ToolProperty_t *pDependenciesProperty,
+    CCustomBuildTool *pCustomBuildTool, ToolProperty_t *pCommandLineProperty
+)
+{
+  if ( !pFileList[ 0 ] )
+  {
+    return;
+  }
+
+  CPropertyStates &propertyStates = pCustomBuildTool->m_PropertyStates;
+
+  // no command line, no need for a dependency
+  PropertyState_t *pCommandLine =
+      propertyStates.GetProperty( pCommandLineProperty->m_nPropertyId );
+  if ( !pCommandLine || pCommandLine->m_StringValue.IsEmpty() )
+  {
+    return;
+  }
+
+  PropertyState_t *pDependencies =
+      propertyStates.GetProperty( pDependenciesProperty->m_nPropertyId );
+  if ( !pDependencies )
+  {
+    intp iIndex = propertyStates.m_Properties.AddToTail();
+    pDependencies = &propertyStates.m_Properties[ iIndex ];
+    pDependencies->m_pToolProperty = pDependenciesProperty;
+
+    propertyStates.m_PropertiesInOutputOrder.Insert( iIndex );
+  }
+
+  if ( !pDependencies->m_StringValue.IsEmpty() )
+  {
+    pDependencies->m_StringValue += ";";
+  }
+
+  pDependencies->m_StringValue += pFileList;
+}
+
+// DRAFT: $MPC_TRIVIAL_DEPENDENCY_PATH as a timestamp dependency for all custom
+// build tools, so they re-run when scripts or generating mode change.
+void CVCProjGenerator::AddIndirectCustomBuildDependencies()
+{
+  ToolProperty_t *pGlobalProperty = m_pGeneratorDefinition->GetProperty(
+      KEYWORD_CUSTOMBUILDSTEP, g_pOption_AdditionalDependencies_Proj );
+  ToolProperty_t *pFileProperty = m_pGeneratorDefinition->GetProperty(
+      KEYWORD_CUSTOMBUILDSTEP, g_pOption_AdditionalDependencies );
+  ToolProperty_t *pCommandLineProperty = m_pGeneratorDefinition->GetProperty(
+      KEYWORD_CUSTOMBUILDSTEP, g_pOption_CommandLine );
+
+  if ( !pGlobalProperty || !pFileProperty || !pCommandLineProperty )
+  {
+    g_pVPC->VPCError(
+        "Unknown property %s && %s && %s expected for section %s",
+        g_pOption_AdditionalDependencies_Proj, g_pOption_AdditionalDependencies,
+        g_pOption_CommandLine, g_pVPC->KeywordToName( KEYWORD_CUSTOMBUILDSTEP )
+    );
+  
+    return;
+  }
+
+  CUtlString trivialDependency;
+  if ( g_pVPC->FindOrCreateMacro( "MPC_TRIVIAL_DEPENDENCY_PATH", false, NULL ) )
+  {
+    char szResolved[ MAX_PATH ];
+    g_pVPC->ResolveMacrosInString( "$MPC_TRIVIAL_DEPENDENCY_PATH", szResolved,
+                                    sizeof( szResolved ) );
+    V_FixSlashes( szResolved );
+    V_RemoveDotSlashes( szResolved );
+
+    trivialDependency = szResolved;
+  }
+
+  bool bWarnedTrivial = false;
+
+  for ( CProjectConfiguration *pRootConfig : m_RootConfigurations )
+  {
+    CCustomBuildTool *pGlobalTool = pRootConfig->GetCustomBuildTool();
+    
+    if ( pGlobalTool )
+    {
+      if ( trivialDependency.IsEmpty() && !bWarnedTrivial )
+      {
+        g_pVPC->VPCWarning(
+            "$MPC_TRIVIAL_DEPENDENCY_PATH should be defined somewhere in the "
+            "script if you have custom build tools."
+        );
+        
+        bWarnedTrivial = true;
+      }
+
+      AddFilesToDependenciesProperty( trivialDependency.Get(), pGlobalProperty, pGlobalTool, pCommandLineProperty );
+    }
+
+    for ( auto iIndex = m_FileDictionary.FirstInorder();
+            iIndex != m_FileDictionary.InvalidIndex();
+            iIndex = m_FileDictionary.NextInorder( iIndex )
+    )
+    {
+      CProjectConfiguration *pFileConfig = NULL;
+      if ( !m_FileDictionary[ iIndex ]->GetConfiguration( pRootConfig->m_Name.Get(), &pFileConfig ) )
+      {
+        continue;
+      }
+
+      CCustomBuildTool *pFileTool = pFileConfig->GetCustomBuildTool(); // d
+      if ( !pFileTool )
+      {
+        continue;
+      }
+
+      if ( trivialDependency.IsEmpty() && !bWarnedTrivial )
+      {
+        g_pVPC->VPCWarning(
+            "$MPC_TRIVIAL_DEPENDENCY_PATH should be defined somewhere in the "
+            "script if you have custom build tools."
+        );
+        
+        bWarnedTrivial = true;
+      }
+
+      AddFilesToDependenciesProperty( trivialDependency.Get(), pFileProperty, pFileTool, pCommandLineProperty );
+    }
+  }
+}
+
 void CVCProjGenerator::EndProject() {
   BaseClass::EndProject();
 
@@ -906,6 +1036,8 @@ void CVCProjGenerator::EndProject() {
   ApplyInternalPreprocessorDefinitions();
 
   VPC_FakeKeyword_SchemaFolder(this);
+
+  AddIndirectCustomBuildDependencies(); //
 
 #ifdef STEAM
 #error( "NEEDS TO BE FIXED" )

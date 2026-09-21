@@ -1930,6 +1930,32 @@ bool CVPC::ParseProjectScript(const char *pScriptName, int depth, bool bQuiet,
     crcCheckString += "$QUOTE\nif ERRORLEVEL 1 exit /b 1";
     g_pVPC->FindOrCreateMacro("CRCCHECK", true, crcCheckString.Get());
 
+    // DRAFT: reserve $HOST_MPC_EXE - quoted path to the running executable
+    // relative to the project; $MPC_OUTPUT_FILE - the project file being
+    // generated.
+    // example: "$HOST_MPC_EXE -crc2 $QUOTE$MPC_OUTPUT_FILE$QUOTE"
+    char szHostExePath[ MAX_PATH ];
+    if ( !Sys_GetExecutablePath( szHostExePath, sizeof( szHostExePath ) ) )
+    {
+      g_pVPC->VPCError( "Unable to determine the path to the running executable." );
+    }
+
+    char szHostExeRelPath[ MAX_PATH ];
+    const char *pHostExePath = szHostExePath;
+    if (
+      V_MakeRelativePath( szHostExePath, g_pVPC->GetProjectPath(), szHostExeRelPath, sizeof( szHostExeRelPath ) )
+    )
+    {
+      pHostExePath = szHostExeRelPath;
+    }
+    else
+    {
+      g_pVPC->VPCWarning( "$HOST_MPC_EXE could not turn the absolute path to a relative one." );
+    }
+
+    g_pVPC->FindOrCreateMacro( "HOST_MPC_EXE", true, CFmtStr( "\"%s\"", pHostExePath ) );
+    g_pVPC->FindOrCreateMacro( "MPC_OUTPUT_FILE", true, g_pVPC->GetOutputFilename() );
+
     // create reserved $PROJECTDIR
     char szProjectRootPath[MAX_PATH];
     // dimhotepus: Wrap in double quotes so paths with spaces work.

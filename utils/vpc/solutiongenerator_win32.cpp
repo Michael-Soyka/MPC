@@ -48,7 +48,7 @@ class IBaseSolutionWriter_Win32 {
                              CUtlVector<CDependency_Project *> &projects,
                              CUtlVector<CUtlString> &folders) {
     for (CDependency_Project *pProject : projects) {
-      const char *pPath = vpc->GetProjectFolder(pProject->m_ProjectName.Get());
+      const char *pPath = vpc->GetProjectFolder( pProject->m_iProjectIndex );
       const intp len = V_strlen(pPath);
 
       for (intp i = 1; i <= len; i++) {
@@ -246,7 +246,7 @@ class CSlnSolutionWriter_Win32 : public IBaseSolutionWriter_Win32 {
       fprintf(m_fp, "EndProject\n");
 
       m_projectFolders.AddToTail(
-          CUtlString(m_vpc->GetProjectFolder(pCurProject->m_ProjectName.Get())));
+          CUtlString( m_vpc->GetProjectFolder( pCurProject->m_iProjectIndex ) ) );
     }
 
     CollectFolders(m_vpc, projects, m_folders);
@@ -628,9 +628,10 @@ class CSlnxSolutionWriter_Win32 : public IBaseSolutionWriter_Win32 {
     const char *pIndent = pFolder[0] ? "    " : "  ";
 
     for (CDependency_Project *pCurProject : projects) {
-      if (V_stricmp(m_vpc->GetProjectFolder(pCurProject->m_ProjectName.Get()),
-                    pFolder))
+      if ( V_stricmp( m_vpc->GetProjectFolder( pCurProject->m_iProjectIndex ), pFolder ) )
+      {
         continue;
+      }
 
       // Get a relative filename for the vcproj file.
       const char *pFullProjectFilename =

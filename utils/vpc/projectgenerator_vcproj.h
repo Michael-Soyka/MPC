@@ -302,6 +302,7 @@ class CVCProjGenerator : public CBaseProjectDataCollector {
   void SetGUID(const char *pOutputFilename);
 
   void ApplyInternalPreprocessorDefinitions();
+  void AddIndirectCustomBuildDependencies();
 
  private:
   configKeyword_e m_nActivePropertySection;
