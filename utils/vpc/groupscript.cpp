@@ -256,8 +256,25 @@ void VPC_ParseGroupScript( const char *script_name )
 				g_pVPC->VPCSyntaxError();
 			}
 
+			// prefer a relative path over a root 
+			char szIncludePath[MAX_PATH];
+			V_strncpy( szIncludePath, pToken, sizeof( szIncludePath ) );
+
+			if ( !V_IsAbsolutePath( pToken ) )
+			{
+				char szCurrentDir[ MAX_PATH ];
+				V_ExtractFilePath( g_pVPC->GetScript().GetName(), szCurrentDir, sizeof( szCurrentDir ) );
+
+				char szRelativePath[ MAX_PATH ];
+				V_ComposeFileName( szCurrentDir, pToken, szRelativePath, sizeof( szRelativePath ) );
+				if ( Sys_Exists( szRelativePath ) )
+				{
+					V_strncpy( szIncludePath, szRelativePath, sizeof( szIncludePath ) );
+				}
+			}
+
 			// recurse into and run
-			VPC_ParseGroupScript( pToken );
+			VPC_ParseGroupScript( szIncludePath );
 		}
 		else if ( !V_stricmp( pToken, "$games" ) )
 		{
