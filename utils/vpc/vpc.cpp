@@ -154,11 +154,15 @@ bool CVPC::Init(int argc, const char **argv) {
     m_nArgc--;
   }
 
-  Log_Msg(LOG_VPC, "MPC - Moon Project Creator\n");
-  Log_Msg(LOG_VPC, "For Visual Studio, Xcode and Make (Build: %s %s)\n", __DATE__, __TIME__);
-  Log_Msg(LOG_VPC,
-          "(C) Copyright 1996-2026 Valve Corporation, 2020-2026 Moon-6 Team. All rights reserved.\n");
-  Log_Msg(LOG_VPC, "\n");
+  #ifdef WIN32
+    SetConsoleTitle( "Moon Project Creator" );
+  #endif
+
+  Log_Msg( LOG_VPC, Color( 0, 255, 255, 255 ), "MPC - Moon Project Creator\n" );
+  Log_Msg( LOG_VPC, "for Visual Studio, Xcode and Make\n" );
+  Log_Msg( LOG_VPC, "Build time: %s %s; Build commit: %s\n", __DATE__, __TIME__, GIT_SHA );
+  Log_Msg( LOG_VPC, "(C) Copyright 1996-2026 Valve Corporation, 2020-2026 Moon-6 Team. All rights reserved.\n" );
+  Log_Msg( LOG_VPC, "\n" );
 
   return true;
 }

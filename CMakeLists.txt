@@ -171,6 +171,13 @@ if (Git_FOUND)
     OUTPUT_VARIABLE SE_VPC_GIT_COMMIT_HASH
     OUTPUT_STRIP_TRAILING_WHITESPACE)
 
+  # Get the latest commit short hash.
+  execute_process(
+    COMMAND "${GIT_EXECUTABLE}" rev-parse --short HEAD
+    WORKING_DIRECTORY ${SE_VPC_ROOT_DIR}
+    OUTPUT_VARIABLE SE_VPC_GIT_COMMIT_SHORT_HASH
+    ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+
   # Get the subject of the commit.
   execute_process(
     COMMAND "${GIT_EXECUTABLE}" log -1 --format=%s
@@ -556,9 +563,14 @@ if (SE_VPC_OS_WIN)
   )
 endif (SE_VPC_OS_WIN)
 
+if (NOT SE_VPC_GIT_COMMIT_SHORT_HASH)
+  set(SE_VPC_GIT_COMMIT_SHORT_HASH "unknown")
+endif()
+
 target_compile_definitions(${PACKAGE_NAME}
   PRIVATE
     NO_PERFORCE
+    GIT_SHA="${SE_VPC_GIT_COMMIT_SHORT_HASH}"
     STANDALONE_VPC=1
     STATIC_TIER0=1
     STATIC_VSTDLIB=1
