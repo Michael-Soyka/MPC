@@ -219,6 +219,10 @@ class CVPC {
 
   const char *GetStartDirectory() { return m_StartDirectory.Get(); }
   const char *GetSourcePath() { return m_SourcePath.Get(); }
+  const char *GetScriptsDirName()
+  {
+    return ( m_ScriptsDirName.IsEmpty() ? "mpc_scripts" : m_ScriptsDirName.Get() );
+  }
   const char *GetProjectPath() { return m_ProjectPath.Get(); }
   const char *GetCRCString() { return m_SupplementalCRCString.Get(); }
   const char *GetSolutionItemsFilename() {
@@ -397,6 +401,10 @@ class CVPC {
   // Root path to the sources (i.e. the directory where the mpc_scripts
   // directory can be found in).
   CUtlString m_SourcePath;
+
+  // Name of the scripts directory inside m_SourcePath,
+  // empty is "mpc_scripts".
+  CUtlString m_ScriptsDirName;
 
   // path to the project being processed (i.e. the directory where this
   // project's .mpc can be found).

@@ -260,7 +260,7 @@ void CGeneratorDefinition::LoadDefinition( const char *pDefnitionName, PropertyN
 	Clear();
 
 	m_pPropertyNames = pPropertyNames;
-	g_pVPC->GetScript().PushScript( CFmtStr( "mpc_scripts\\definitions\\%s", pDefnitionName ) );
+	g_pVPC->GetScript().PushScript( CFmtStr( "%s\\definitions\\%s", g_pVPC->GetScriptsDirName(), pDefnitionName ) );
 	
 	// project definitions are KV format
 	KeyValues *pScriptKV = new KeyValues( g_pVPC->GetScript().GetName() );

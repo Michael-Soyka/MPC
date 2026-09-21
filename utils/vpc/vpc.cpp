@@ -548,8 +548,9 @@ void CVPC::DetermineSourcePath()
     V_ExtractFilePath( abs_dir, source_path, sizeof( source_path ) );
     V_StripTrailingSlash( source_path );
 
-    m_SourcePath = source_path;
-    
+    m_SourcePath     = source_path;
+    m_ScriptsDirName = V_UnqualifiedFileName( abs_dir );
+
     Log_Msg( LOG_VPC, "Source Path: %s\n", m_SourcePath.Get() );
 
     return;
@@ -2397,6 +2398,7 @@ int CVPC::ProcessCommandLine() {
   bool has_build_command = false;
 
   const char *script_name = nullptr, *script_name_vcproj = nullptr;
+  CUtlString default_script;
 
   for (int i = 1; i < m_nArgc; i++) {
     const char *argv = m_ppArgv[i];
@@ -2445,8 +2447,9 @@ int CVPC::ProcessCommandLine() {
 
   if (!is_vgc) {
     // no script, use default group
-    script_name = "mpc_scripts\\default.vgc";
-    is_vgc = true;
+    default_script = CFmtStr( "%s\\default.vgc", GetScriptsDirName() ).Get();
+    script_name    = default_script.Get();
+    is_vgc         = true;
   }
 
   // set the current directory, it is to be expected src, i.e. .\mpc_scripts\..
