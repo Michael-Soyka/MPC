@@ -387,13 +387,14 @@ intp CVPC::GetProjectsInGroup(CUtlVector<projectIndex_t> &projectList,
 }
 
 //-----------------------------------------------------------------------------
-// Returns the value of /scriptsdir, or nullptr if not specified
+// Returns the value of a path option (e.g. /scriptsdir), or nullptr if not
+// specified
 //-----------------------------------------------------------------------------
-static const char *FindScriptsDirArg( int argc, const char *argv[] )
+static const char *FindPathArg( int argc, const char *argv[], const char *name )
 {
   for ( int i = 1; i < argc; i++ )
   {
-    if ( !V_stricmp( argv[ i ], "/scriptsdir" ) && ( i + 1 ) < argc )
+    if ( !V_stricmp( argv[ i ], name ) && ( i + 1 ) < argc )
     {
       return argv[ i + 1 ];
     }
@@ -426,7 +427,7 @@ bool CVPC::CheckBinPath( char *pOutBinPath, int outBinPathSize )
 {
   // outside devtools/bin the scripts are located via /scriptsdir, nothing to
   // compare against
-  if ( FindScriptsDirArg( m_nArgc, m_ppArgv ) || !IsRunningFromDevtoolsBin() )
+  if ( FindPathArg( m_nArgc, m_ppArgv, "/scriptsdir" ) || !IsRunningFromDevtoolsBin() )
   {
     return true;
   }
@@ -535,37 +536,59 @@ void CVPC::DetermineSourcePath()
   char source_path[ MAX_PATH ];
   char last_directory[ MAX_PATH ];
 
-  if ( const char *scripts_dir = FindScriptsDirArg( m_nArgc, m_ppArgv ) )
+  const char *src_dir     = FindPathArg( m_nArgc, m_ppArgv, "/srcdir" );
+  const char *scripts_dir = FindPathArg( m_nArgc, m_ppArgv, "/scriptsdir" );
+
+  if ( !IsRunningFromDevtoolsBin() && ( !src_dir || !scripts_dir ) )
+  {
+    VPCError(
+        "Executable is not in 'devtools/bin'! Expecting both '/srcdir <path to "
+        "sources>' and '/scriptsdir <path to mpc_scripts>'."
+    );
+  }
+
+  if ( src_dir || scripts_dir )
   {
     char abs_dir[ MAX_PATH ];
-  
-    V_MakeAbsolutePath( abs_dir, sizeof( abs_dir ), scripts_dir );
-    V_StripTrailingSlash( abs_dir );
-
     struct _stat statBuf;
-    if ( _stat( abs_dir, &statBuf ) == -1 )
+
+    if ( scripts_dir )
     {
-      VPCError( "/scriptsdir '%s' does not exist.", abs_dir );
+      V_MakeAbsolutePath( abs_dir, sizeof( abs_dir ), scripts_dir );
+      V_StripTrailingSlash( abs_dir );
+
+      if ( _stat( abs_dir, &statBuf ) == -1 )
+      {
+        VPCError( "/scriptsdir '%s' does not exist.", abs_dir );
+      }
+
+      m_ScriptsDirName = abs_dir;
     }
 
-    // source path is the parent of mpc_scripts
-    V_ExtractFilePath( abs_dir, source_path, sizeof( source_path ) );
-    V_StripTrailingSlash( source_path );
+    if ( src_dir )
+    {
+      V_MakeAbsolutePath( source_path, sizeof( source_path ), src_dir );
+      V_StripTrailingSlash( source_path );
 
-    m_SourcePath     = source_path;
-    m_ScriptsDirName = V_UnqualifiedFileName( abs_dir );
+      if ( _stat( source_path, &statBuf ) == -1 )
+      {
+        VPCError( "/srcdir '%s' does not exist.", source_path );
+      }
+    }
+    else
+    {
+      // source path is the parent of mpc_scripts
+      V_ExtractFilePath( abs_dir, source_path, sizeof( source_path ) );
+      V_StripTrailingSlash( source_path );
+
+      m_ScriptsDirName = V_UnqualifiedFileName( abs_dir );
+    }
+
+    m_SourcePath = source_path;
 
     Log_Msg( LOG_VPC, "Source Path: %s\n", m_SourcePath.Get() );
 
     return;
-  }
-
-  if ( !IsRunningFromDevtoolsBin() )
-  {
-    VPCError(
-        "Executable is not in 'devtools/bin', expecting '/scriptsdir <path to "
-        "mpc_scripts>'."
-    );
   }
 
   char old_path[MAX_PATH];
@@ -1230,9 +1253,19 @@ void CVPC::ParseBuildOptions(int argc, const char *argv[]) {
     else if ( !V_stricmp( pArg, "/scriptsdir" ) )
     {
       // value is consumed in DetermineSourcePath
-      if (( i + 1) >= argc )
+      if ( ( i + 1 ) >= argc )
       {
         VPCError( "/scriptsdir requires a path to the mpc_scripts directory." );
+      }
+
+      ++i;
+    }
+    else if ( !V_stricmp( pArg, "/srcdir" ) )
+    {
+      // value is consumed in DetermineSourcePath
+      if ( ( i + 1 ) >= argc )
+      {
+        VPCError( "/srcdir requires a path to the sources directory." );
       }
 
       ++i;
