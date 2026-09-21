@@ -363,6 +363,11 @@ bool CProjectGenerator_Win32::WritePrimaryXML(
       if (!WritePropertyGroupTool(pConfiguration->GetPostBuildEventTool(),
                                   pConfiguration))
         return false;
+
+      if ( !WritePropertyGroupTool( pConfiguration->GetCustomBuildTool(), pConfiguration ) )
+      {
+        return false;
+      }
     }
   }
   m_XMLWriter.PopNode(true);
