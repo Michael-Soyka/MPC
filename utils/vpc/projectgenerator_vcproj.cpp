@@ -858,7 +858,10 @@ void CVCProjGenerator::SetupGeneratorDefinition(
   m_pGeneratorDefinition->LoadDefinition(pDefinitionName, pPropertyNames);
 }
 
-const char *CVCProjGenerator::GetProjectFileExtension() { return "vcxproj"; }
+const char *CVCProjGenerator::GetProjectFileExtension()
+{
+  return "vcxproj";
+}
 
 void CVCProjGenerator::StartProject() {
   if (!m_pGeneratorDefinition) {

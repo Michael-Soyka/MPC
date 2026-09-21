@@ -403,25 +403,32 @@ class CSlnSolutionWriter_Win32 : public IBaseSolutionWriter_Win32 {
       fprintf(m_fp, "\tEndGlobalSection\n");
     }
 
-    if (m_folders.Count()) {
-      fprintf(m_fp, "\tGlobalSection(NestedProjects) = preSolution\n");
+    if ( m_folders.Count() )
+    {
+      fprintf( m_fp, "\tGlobalSection(NestedProjects) = preSolution\n" );
 
-      for (intp i = 0; i < m_projectFolders.Count(); i++) {
-        if (m_projectFolders[i].IsEmpty()) continue;
+      for ( intp i = 0; i < m_projectFolders.Count(); i++ )
+      {
+        if ( m_projectFolders[ i ].IsEmpty() )
+        {
+          continue;
+        }
 
-        fprintf(m_fp, "\t\t{%s} = %s\n", vcprojInfos[i].m_ProjectGUID.Get(),
-                GetFolderGuid(m_projectFolders[i].Get()).Get());
+        fprintf( m_fp, "\t\t{%s} = %s\n", vcprojInfos[ i ].m_ProjectGUID.Get(), GetFolderGuid( m_projectFolders[ i ].Get() ).Get());
       }
 
-      for (const CUtlString &folder : m_folders) {
+      for ( const CUtlString &folder : m_folders )
+      {
         CUtlString parent = GetParentFolder(folder.Get());
-        if (parent.IsEmpty()) continue;
+        if ( parent.IsEmpty() )
+        {
+          continue;
+        }
 
-        fprintf(m_fp, "\t\t%s = %s\n", GetFolderGuid(folder.Get()).Get(),
-                GetFolderGuid(parent.Get()).Get());
+        fprintf( m_fp, "\t\t%s = %s\n", GetFolderGuid( folder.Get() ).Get(), GetFolderGuid( parent.Get()).Get() );
       }
 
-      fprintf(m_fp, "\tEndGlobalSection\n");
+      fprintf( m_fp, "\tEndGlobalSection\n" );
     }
 
     {
